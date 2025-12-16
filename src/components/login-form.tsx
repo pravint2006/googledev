@@ -30,6 +30,7 @@ export function LoginForm() {
         title: 'Admin Access',
         description: 'Bypassing authentication for development.',
       });
+      sessionStorage.setItem('dev-admin-login', 'true');
       router.push('/dashboard');
       return;
     }
