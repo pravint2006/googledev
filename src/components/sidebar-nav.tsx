@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
@@ -8,6 +9,7 @@ import {
   LogOut,
   Settings,
   ChevronLeft,
+  MoreVertical,
 } from 'lucide-react';
 
 import {
@@ -18,17 +20,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   useSidebar,
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { AppLogo } from '@/components/app-logo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 
 export default function SidebarNav() {
   const pathname = usePathname();
@@ -109,21 +107,26 @@ export default function SidebarNav() {
               john.doe@agrifuture.com
             </span>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">User Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className='w-56'>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Settings" href="#">
-              <Settings />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleLogout} tooltip="Log Out">
-              <LogOut />
-              <span>Log Out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
       </SidebarFooter>
     </>
   );
