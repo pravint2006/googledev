@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
@@ -58,29 +58,42 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
-    } catch (error) {
-      let errorMessage = 'An unknown error occurred.';
-      if (error instanceof Error) {
-        switch ((error as any).code) {
-          case 'auth/user-not-found':
-          case 'auth/wrong-password':
-          case 'auth/invalid-credential':
-            errorMessage = 'Invalid email or password. Please try again.';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'Please enter a valid email address.';
-            break;
-          default:
-            errorMessage = 'Failed to log in. Please try again later.';
-            break;
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // User not found, try to create a new user
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            router.push('/dashboard');
+        } catch (creationError: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Sign-up Failed',
+                description: creationError.message || 'Could not create a new account.',
+            });
         }
+      } else {
+         let errorMessage = 'An unknown error occurred.';
+         if (error instanceof Error) {
+            switch (error.code) {
+                case 'auth/wrong-password':
+                    errorMessage = 'Invalid password. Please try again.';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = 'Please enter a valid email address.';
+                    break;
+                default:
+                    errorMessage = 'Failed to log in. Please try again later.';
+                    break;
+            }
+         }
+        toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: errorMessage,
+        });
       }
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: errorMessage,
-      });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
