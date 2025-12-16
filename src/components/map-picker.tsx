@@ -16,6 +16,7 @@ interface MapPickerProps {
   mapImageUrl?: string;
   mapImageHint?: string;
   mapTypeId?: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
+  center?: { lat: number; lng: number };
 }
 
 const containerStyle = {
@@ -23,7 +24,7 @@ const containerStyle = {
   height: '100%',
 };
 
-// Center map on KPT Cricket Ground
+// Center map on KPT Cricket Ground, will be overridden by `center` prop if provided
 const defaultCenter = {
   lat: 24.842233,
   lng: 67.026117,
@@ -35,6 +36,7 @@ export default function MapPicker({
   setValves,
   valveCount,
   mapTypeId = 'roadmap',
+  center,
 }: MapPickerProps) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -81,6 +83,10 @@ export default function MapPicker({
         strokeWeight: 2,
       };
   }, []);
+  
+  const mapCenter = center || (valves.length > 0 ? valves[0].position : defaultCenter);
+  const zoomLevel = center && valves.length === 0 ? 8 : 17;
+
 
   if (loadError) {
     return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly.</div>;
@@ -99,8 +105,8 @@ export default function MapPicker({
     <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
        <GoogleMap
         mapContainerStyle={containerStyle}
-        center={valves.length > 0 ? valves[0].position : defaultCenter}
-        zoom={17}
+        center={mapCenter}
+        zoom={zoomLevel}
         mapTypeId={mapTypeId}
         options={{
           disableDefaultUI: true,

@@ -33,6 +33,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const tamilNaduCenter = { lat: 11.1271, lng: 78.6569 };
+
 export default function FarmForm() {
   const [step, setStep] = useState(1);
   const [valves, setValves] = useState<GateValve[]>([]);
@@ -144,6 +146,7 @@ export default function FarmForm() {
                                 setValves={setValves} 
                                 valveCount={watchedValues.valveCount}
                                 mapTypeId="satellite"
+                                center={tamilNaduCenter}
                             />
                         </CardContent>
                         <CardFooter className="justify-between">
