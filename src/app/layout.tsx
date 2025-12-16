@@ -30,7 +30,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={cn('font-body antialiased', ptSans.variable)}>
+      <body className={cn('font-body antialiased', ptSans.variable)} suppressHydrationWarning>
         {children}
         <Toaster />
       </body>
