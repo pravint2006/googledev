@@ -23,10 +23,10 @@ const containerStyle = {
   height: '100%',
 };
 
-// A default center, e.g., a central location in a farming region.
+// Center map on the location from the user's screenshot
 const defaultCenter = {
-  lat: 36.7783,
-  lng: -119.4179,
+  lat: 10.8276428,
+  lng: 77.0685764,
 };
 
 export default function MapPicker({
@@ -38,6 +38,7 @@ export default function MapPicker({
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['marker'], // Ensure marker library is loaded
   });
 
   const [activeValve, setActiveValve] = useState<GateValve | null>(null);
@@ -66,19 +67,22 @@ export default function MapPicker({
     if (!setValves) return;
     setValves(valves.filter(v => v.id !== id));
     setActiveValve(null);
-  }
+  };
 
-  const getMarkerIcon = (status: 'open' | 'closed') => ({
-    path: MapPin,
-    fillColor: status === 'open' ? '#10B981' : '#EF4444', // Green-500 for open, Red-500 for closed
-    fillOpacity: 0.8,
-    strokeWeight: 0,
-    scale: 1.5,
-    anchor: new google.maps.Point(12, 24),
-  });
+  const getMarkerIcon = useCallback((status: 'open' | 'closed') => {
+      if (!window.google) return undefined;
+      return {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: status === 'open' ? '#22c55e' : '#ef4444',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      };
+  }, []);
 
   if (loadError) {
-    return <div>Error loading maps. Please check the API key.</div>;
+    return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly in your .env.local file.</div>;
   }
 
   if (!isLoaded) {
@@ -95,7 +99,7 @@ export default function MapPicker({
        <GoogleMap
         mapContainerStyle={containerStyle}
         center={valves.length > 0 ? valves[0].position : defaultCenter}
-        zoom={15}
+        zoom={17}
         mapTypeId="satellite"
         options={{
           disableDefaultUI: true,
@@ -109,14 +113,7 @@ export default function MapPicker({
             key={valve.id}
             position={valve.position}
             onClick={() => setActiveValve(valve)}
-            icon={{
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: valve.status === 'open' ? '#22c55e' : '#ef4444',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2,
-            }}
+            icon={getMarkerIcon(valve.status)}
             label={{
                 text: 'V',
                 color: 'white',
