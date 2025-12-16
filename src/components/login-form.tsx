@@ -13,7 +13,11 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSwitchToSignup: () => void;
+}
+
+export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -23,17 +27,6 @@ export function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Temporary admin login bypass
-    if (email === 'admin@example.com' && password === 'password') {
-      toast({
-        title: 'Admin Access',
-        description: 'Bypassing authentication for development.',
-      });
-      sessionStorage.setItem('dev-admin-login', 'true');
-      router.push('/dashboard');
-      return;
-    }
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -65,7 +58,7 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm animate-fade-in-up">
+    <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
       <form onSubmit={handleLogin}>
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
@@ -84,11 +77,17 @@ export function LoginForm() {
             <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex-col gap-4">
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLoading ? 'Logging In...' : 'Log In'}
           </Button>
+          <p className="text-xs text-muted-foreground">
+            Don't have an account?{' '}
+            <Button variant="link" size="sm" className="p-0 h-auto" type="button" onClick={onSwitchToSignup}>
+              Sign up
+            </Button>
+          </p>
         </CardFooter>
       </form>
     </Card>

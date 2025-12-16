@@ -46,19 +46,10 @@ export default function Header() {
   const pathname = usePathname();
   const { user, loading, claims } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDevAdmin, setIsDevAdmin] = useState(false);
 
-  useEffect(() => {
-    // This check needs to be in useEffect to avoid server/client mismatch with sessionStorage
-    setIsDevAdmin(sessionStorage.getItem('dev-admin-login') === 'true');
-  }, [pathname]);
-
-  const isLoggedIn = user || isDevAdmin;
+  const isLoggedIn = !!user;
 
   const handleLogout = async () => {
-    if (isDevAdmin) {
-      sessionStorage.removeItem('dev-admin-login');
-    }
     await signOut(auth);
     router.push('/login');
   };
@@ -155,9 +146,9 @@ export default function Header() {
               <DropdownMenuContent side="bottom" align="end" className="w-56">
                 <DropdownMenuLabel className='font-normal'>
                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.displayName || 'Admin User'}</p>
+                      <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email || 'admin@example.com'}
+                        {user?.email || ''}
                       </p>
                     </div>
                 </DropdownMenuLabel>

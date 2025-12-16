@@ -17,18 +17,12 @@ export default function AppLayout({
   const pathname = usePathname();
 
   useEffect(() => {
-    // This condition allows access for the temporary admin user even without a real auth object
     if (!loading && !user && pathname !== '/login') {
-       if (sessionStorage.getItem('dev-admin-login') !== 'true') {
-         router.push('/login');
-       }
+       router.push('/login');
     }
   }, [user, loading, router, pathname]);
 
-  // A check to see if the user is a temporary admin user.
-  const isDevAdmin = !user && sessionStorage.getItem('dev-admin-login') === 'true';
-
-  if (loading && !isDevAdmin) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -36,8 +30,7 @@ export default function AppLayout({
     );
   }
 
-  // If there's no user and it's not the dev admin, show loader until redirect happens.
-  if (!user && !isDevAdmin) {
+  if (!user) {
      return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

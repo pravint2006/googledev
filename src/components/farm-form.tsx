@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,8 +63,7 @@ export default function FarmForm() {
   };
 
   const handleFinalSubmit = async () => {
-    if (valves.length !== watchedValues.valveCount) {
-      // This case should be prevented by the disabled button, but as a fallback:
+    if (isSaveDisabled) {
       toast({
         variant: 'destructive',
         title: 'Valve Placement Incomplete',
@@ -77,14 +77,17 @@ export default function FarmForm() {
     await addFarm({
       name: watchedValues.farmName,
       gateValves: valves,
-      mapImageUrl: '', // This will be handled by the map component itself now
+      mapImageUrl: '',
       mapImageHint: 'satellite farm',
     });
     
-    // Brief pause to allow Firestore to propagate before redirecting
-    setTimeout(() => {
-        router.push('/farms');
-    }, 500);
+    setIsSubmitting(false);
+    toast({
+        title: "Farm Saved!",
+        description: "Your new farm has been created successfully."
+    });
+
+    router.push('/farms');
   };
 
   const progressValue = (step / 2) * 100;
@@ -103,7 +106,7 @@ export default function FarmForm() {
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : 'Click on the map to place your gate valves.'}
+                : `Click on the map to place your ${watchedValues.valveCount} gate valves.`}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">

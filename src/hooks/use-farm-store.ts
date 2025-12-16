@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -16,13 +17,8 @@ export function useFarmStore() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [isDevAdmin, setIsDevAdmin] = useState(false);
   
-  useEffect(() => {
-    setIsDevAdmin(sessionStorage.getItem('dev-admin-login') === 'true');
-  }, []);
-
-  const currentUserId = user?.uid || (isDevAdmin ? 'dev-admin' : null);
+  const currentUserId = user?.uid;
 
   useEffect(() => {
     if (currentUserId) {
