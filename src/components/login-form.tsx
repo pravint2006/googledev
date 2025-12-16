@@ -86,23 +86,18 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
                 description: errorMessage,
             });
         }
-      } else {
-        let errorMessage = 'An unknown error occurred.';
-        switch (error.code) {
-          case 'auth/wrong-password':
-            errorMessage = 'Invalid email or password.';
-            break;
-          case 'auth/operation-not-allowed':
-             errorMessage = 'Email/Password sign in is not enabled. Please use Google Sign-In.';
-             break;
-          default:
-            errorMessage = error.message;
-            break;
-        }
+      } else if (error.code === 'auth/operation-not-allowed') {
+          toast({
+              variant: 'destructive',
+              title: 'Login Failed',
+              description: 'Email/Password sign-in is not enabled for this project. Please use Google Sign-In.',
+          });
+      }
+      else {
         toast({
             variant: 'destructive',
             title: 'Login Failed',
-            description: errorMessage,
+            description: error.message,
         });
       }
     } finally {
@@ -156,15 +151,10 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading} />
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading || isGoogleLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Logging In...' : 'Log In with Email'}
-            </Button>
-             <Button type="submit" variant="secondary" className="w-full" disabled={isLoading || isGoogleLoading}>
-              Dev Login
-            </Button>
-          </div>
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading || isGoogleLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading ? 'Logging In...' : 'Log In / Sign Up with Email'}
+          </Button>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-4">
@@ -178,3 +168,5 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     </Card>
   );
 }
+
+    
