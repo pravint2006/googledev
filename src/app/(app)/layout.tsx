@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -16,18 +17,34 @@ export default function AppLayout({
   const pathname = usePathname();
 
   useEffect(() => {
+    // This condition allows access for the temporary admin user even without a real auth object
     if (!loading && !user && pathname !== '/login') {
-      router.push('/login');
+       if (sessionStorage.getItem('dev-admin-login') !== 'true') {
+         router.push('/login');
+       }
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || (!user && pathname !== '/login')) {
+  // A check to see if the user is a temporary admin user.
+  const isDevAdmin = !user && sessionStorage.getItem('dev-admin-login') === 'true';
+
+  if (loading && !isDevAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
+
+  // If there's no user and it's not the dev admin, show loader until redirect happens.
+  if (!user && !isDevAdmin) {
+     return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <>

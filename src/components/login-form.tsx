@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -22,6 +23,17 @@ export function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    // Temporary admin login bypass
+    if (email === 'admin@example.com' && password === 'password') {
+      toast({
+        title: 'Admin Access',
+        description: 'Bypassing authentication for development.',
+      });
+      router.push('/dashboard');
+      return;
+    }
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
