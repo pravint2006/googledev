@@ -4,12 +4,10 @@
 import { createContext, useContext } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
 
 type FirebaseContextValue = {
   app: FirebaseApp;
   auth: Auth;
-  firestore: Firestore;
 };
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(
@@ -41,6 +39,4 @@ export function useAuth() {
   return useFirebase().auth;
 }
 
-export function useFirestore() {
-  return useFirebase().firestore;
-}
+// useFirestore is no longer needed

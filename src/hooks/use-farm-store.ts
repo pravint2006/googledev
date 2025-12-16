@@ -1,16 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { type Farm } from '@/lib/data';
+import { useState, useEffect, useCallback } from 'react';
+import { type Farm, type GateValve } from '@/lib/data';
 import { useToast } from './use-toast';
-import {
-  addFarm as addFarmFs,
-  deleteFarm as deleteFarmFs,
-  getFarms,
-  toggleValveStatus as toggleValveStatusFs,
-} from '@/lib/firebase/firestore';
 import { useUser } from '@/firebase';
+import { GeoPoint } from 'firebase/firestore';
+
+// In-memory data store for farms
+let memoryFarms: Farm[] = [];
 
 export function useFarmStore() {
   const { user } = useUser();
@@ -21,18 +19,23 @@ export function useFarmStore() {
   const currentUserId = user?.uid;
 
   useEffect(() => {
+    // Simulate loading data for the current user
     if (currentUserId) {
-      setIsLoading(true);
-      const unsubscribe = getFarms(currentUserId, (newFarms) => {
-        setFarms(newFarms);
-        setIsLoading(false);
-      });
-      return () => unsubscribe();
+      // On user change, filter the in-memory data.
+      // This simulates multi-user support locally.
+      setFarms(memoryFarms.filter(f => f.ownerId === currentUserId));
     } else {
       setFarms([]);
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, [currentUserId]);
+
+  const updateMemoryAndState = (newFarms: Farm[]) => {
+    memoryFarms = newFarms;
+    if (currentUserId) {
+        setFarms(memoryFarms.filter(f => f.ownerId === currentUserId));
+    }
+  }
 
   const addFarm = useCallback(
     async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
@@ -44,45 +47,34 @@ export function useFarmStore() {
         });
         return;
       }
-      try {
-        await addFarmFs(currentUserId, farmData);
-        // Toast is now handled in the component after successful navigation
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error Creating Farm',
-          description:
-            error instanceof Error ? error.message : 'An unknown error occurred.',
-        });
-        throw error; // Re-throw error to be caught in the form
-      }
+      
+      const newFarm: Farm = {
+        id: `farm-${Date.now()}`,
+        ownerId: currentUserId,
+        ...farmData,
+        gateValves: farmData.gateValves.map(v => ({
+            ...v,
+            position: new GeoPoint((v.position as any).lat, (v.position as any).lng)
+        }))
+      };
+
+      updateMemoryAndState([...memoryFarms, newFarm]);
     },
     [currentUserId, toast]
   );
 
   const deleteFarm = useCallback(
     async (farmId: string) => {
-      const farmToDelete = farms.find((f) => f.id === farmId);
+      const farmToDelete = memoryFarms.find((f) => f.id === farmId);
       if (farmToDelete) {
-        try {
-          await deleteFarmFs(farmId);
-          toast({
+        updateMemoryAndState(memoryFarms.filter((f) => f.id !== farmId));
+        toast({
             title: 'Farm Deleted',
             description: `Successfully deleted "${farmToDelete.name}".`,
-          });
-        } catch (error) {
-          toast({
-            variant: 'destructive',
-            title: 'Error Deleting Farm',
-            description:
-              error instanceof Error
-                ? error.message
-                : 'An unknown error occurred.',
-          });
-        }
+        });
       }
     },
-    [farms, toast]
+    [toast]
   );
 
   const getFarmById = useCallback(
@@ -94,29 +86,30 @@ export function useFarmStore() {
 
   const toggleValveStatus = useCallback(
     async (farmId: string, valveId: string) => {
-      const farm = farms.find((f) => f.id === farmId);
-      const valve = farm?.gateValves.find((v) => v.id === valveId);
-      if (farm && valve) {
-        try {
-          await toggleValveStatusFs(farmId, valveId);
-          // Optimistic update is handled by the listener, but a toast provides feedback.
-          toast({
-            title: `Valve status changed`,
-            description: `Valve "${valve.name}" is now ${valve.status === 'open' ? 'closing' : 'opening'}.`,
+      const newFarms = memoryFarms.map(farm => {
+        if (farm.id === farmId) {
+          let toggledValveName = '';
+          const updatedValves = farm.gateValves.map(valve => {
+            if (valve.id === valveId) {
+              toggledValveName = valve.name;
+              return { ...valve, status: valve.status === 'open' ? 'closed' : 'open' } as GateValve;
+            }
+            return valve;
           });
-        } catch (error) {
-          toast({
-            variant: 'destructive',
-            title: 'Error updating valve',
-            description:
-              error instanceof Error
-                ? error.message
-                : 'An unknown error occurred.',
-          });
+          
+          if(toggledValveName) {
+            toast({
+              title: `Valve status changed`,
+              description: `Valve "${toggledValveName}" status updated.`,
+            });
+          }
+          return { ...farm, gateValves: updatedValves };
         }
-      }
+        return farm;
+      });
+      updateMemoryAndState(newFarms);
     },
-    [farms, toast]
+    [toast]
   );
 
   return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
