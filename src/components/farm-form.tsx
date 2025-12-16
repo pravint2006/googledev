@@ -63,6 +63,7 @@ export default function FarmForm() {
 
   const handleFinalSubmit = async () => {
     if (valves.length !== watchedValues.valveCount) {
+      // This case should be prevented by the disabled button, but as a fallback:
       toast({
         variant: 'destructive',
         title: 'Valve Placement Incomplete',
