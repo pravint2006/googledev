@@ -59,37 +59,24 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // User not found, try to create a new user
+      if (error.code === 'auth/invalid-credential') {
+        // This code is returned for either user-not-found or wrong-password.
+        // For dev convenience, we'll try to create the user.
         try {
             await createUserWithEmailAndPassword(auth, email, password);
-            router.push('/dashboard');
+            // The onAuthStateChanged listener will handle the redirect
         } catch (creationError: any) {
             toast({
                 variant: 'destructive',
-                title: 'Sign-up Failed',
-                description: creationError.message || 'Could not create a new account.',
+                title: 'Login Failed',
+                description: 'Invalid email or password.',
             });
         }
       } else {
-         let errorMessage = 'An unknown error occurred.';
-         if (error instanceof Error) {
-            switch (error.code) {
-                case 'auth/wrong-password':
-                    errorMessage = 'Invalid password. Please try again.';
-                    break;
-                case 'auth/invalid-email':
-                    errorMessage = 'Please enter a valid email address.';
-                    break;
-                default:
-                    errorMessage = 'Failed to log in. Please try again later.';
-                    break;
-            }
-         }
         toast({
             variant: 'destructive',
             title: 'Login Failed',
-            description: errorMessage,
+            description: error.message || 'An unknown error occurred.',
         });
       }
     } finally {
