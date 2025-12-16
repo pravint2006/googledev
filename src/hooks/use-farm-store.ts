@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { type Farm, type GateValve, initialFarms } from '@/lib/data';
@@ -41,11 +41,18 @@ export function useFarmStore() {
       id: `farm-${Date.now()}`,
     };
     setFarms(prevFarms => [...prevFarms, newFarm]);
-    toast({
-      title: "Farm Added",
-      description: `Successfully added "${newFarm.name}".`,
-    });
-  }, [toast]);
+  }, []);
+
+  const deleteFarm = useCallback((farmId: string) => {
+    const farmToDelete = farms.find(f => f.id === farmId);
+    if (farmToDelete) {
+      setFarms(prevFarms => prevFarms.filter(farm => farm.id !== farmId));
+      toast({
+        title: "Farm Deleted",
+        description: `Successfully deleted "${farmToDelete.name}".`,
+      });
+    }
+  }, [farms, toast]);
 
   const getFarmById = useCallback((id: string) => {
     return farms.find(farm => farm.id === id);
@@ -73,5 +80,5 @@ export function useFarmStore() {
     });
   }, [toast]);
 
-  return { farms, isLoading, addFarm, getFarmById, toggleValveStatus };
+  return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
 }
