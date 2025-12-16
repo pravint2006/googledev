@@ -30,10 +30,10 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth.tsx';
+import { useState } from 'react';
+import { useUser } from '@/firebase/auth/use-user';
+import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,7 +44,8 @@ const navLinks = [
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, claims } = useAuth();
+  const { user, loading } = useUser();
+  const auth = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isLoggedIn = !!user;

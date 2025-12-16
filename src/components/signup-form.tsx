@@ -17,7 +17,7 @@ import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 
@@ -52,6 +52,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');

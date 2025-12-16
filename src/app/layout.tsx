@@ -3,7 +3,7 @@ import { PT_Sans } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider } from '@/hooks/use-auth.tsx';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -32,10 +32,10 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased', ptSans.variable)} suppressHydrationWarning>
-        <AuthProvider>
+        <FirebaseClientProvider>
           {children}
           <Toaster />
-        </AuthProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

@@ -1,11 +1,11 @@
 
 'use client';
-import { useAuth } from '@/hooks/use-auth.tsx';
+import { useUser } from '@/firebase/auth/use-user';
 import { redirect } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function RootPage() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
 
   useEffect(() => {
     if (!loading) {

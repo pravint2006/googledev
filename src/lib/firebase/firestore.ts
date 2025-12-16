@@ -12,9 +12,12 @@ import {
   onSnapshot,
   GeoPoint,
   writeBatch,
+  getDoc,
 } from 'firebase/firestore';
-import { db } from './config';
+import { initializeFirebase } from '@/firebase';
 import { Farm, GateValve } from '../data';
+
+const { firestore: db } = initializeFirebase();
 
 const FARMS_COLLECTION = 'farms';
 
@@ -64,24 +67,14 @@ export async function toggleValveStatus(farmId: string, valveId: string) {
   const farmRef = doc(db, FARMS_COLLECTION, farmId);
   const batch = writeBatch(db);
 
-  // This is a simplified version. In a real app, you might need to read the doc first
-  // to get the current status and then update it.
-  // For simplicity, we are assuming we can construct the object to update without reading.
-  // This is not robust if other fields in the valve object can change.
-  
-  // To correctly toggle, we need to read the farm doc first.
-  // This operation should ideally be in a transaction.
-  // For this prototype, we'll keep it simple but it's not atomic.
-  const tempDoc = await getDocs(query(collection(db, FARMS_COLLECTION), where('__name__', '==', farmId)));
-  if (tempDoc.docs.length > 0) {
-    const farm = tempDoc.docs[0].data() as Farm;
+  const farmDoc = await getDoc(farmRef);
+  if (farmDoc.exists()) {
+    const farm = farmDoc.data() as Farm;
     const valveToUpdate = farm.gateValves.find(v => v.id === valveId);
     if (valveToUpdate) {
         const newStatus = valveToUpdate.status === 'open' ? 'closed' : 'open';
         const updatedValve = {...valveToUpdate, status: newStatus};
 
-        // Firestore doesn't have a direct way to update an element in an array.
-        // We have to remove the old one and add the new one.
         batch.update(farmRef, { gateValves: arrayRemove(valveToUpdate) });
         batch.update(farmRef, { gateValves: arrayUnion(updatedValve) });
         await batch.commit();
@@ -91,10 +84,10 @@ export async function toggleValveStatus(farmId: string, valveId: string) {
 
 export async function closeAllValves(farmId: string) {
     const farmRef = doc(db, FARMS_COLLECTION, farmId);
-    const tempDoc = await getDocs(query(collection(db, FARMS_COLLECTION), where('__name__', '==', farmId)));
+    const farmDoc = await getDoc(farmRef);
 
-    if (tempDoc.docs.length > 0) {
-        const farm = tempDoc.docs[0].data() as Farm;
+    if (farmDoc.exists()) {
+        const farm = farmDoc.data() as Farm;
         const batch = writeBatch(db);
 
         const updatedValves = farm.gateValves.map(valve => ({

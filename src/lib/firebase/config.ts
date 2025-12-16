@@ -1,7 +1,5 @@
 
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   projectId: "studio-9781884869-4d982",
@@ -12,9 +10,11 @@ const firebaseConfig: FirebaseOptions = {
   storageBucket: "studio-9781884869-4d982.appspot.com"
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+function initializeFirebase() {
+    if (getApps().length > 0) {
+        return getApp();
+    }
+    return initializeApp(firebaseConfig);
+}
 
-export { app, auth, db };
+export const firebaseApp = initializeFirebase();

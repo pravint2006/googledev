@@ -10,10 +10,10 @@ import {
   getFarms,
   toggleValveStatus as toggleValveStatusFs,
 } from '@/lib/firebase/firestore';
-import { useAuth } from './use-auth.tsx';
+import { useUser } from '@/firebase';
 
 export function useFarmStore() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();

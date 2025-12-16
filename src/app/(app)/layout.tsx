@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Header from '@/components/header';
-import { useAuth } from '@/hooks/use-auth.tsx';
+import { useUser } from '@/firebase/auth/use-user';
 import { Loader2 } from 'lucide-react';
 
 export default function AppLayout({
@@ -12,7 +12,7 @@ export default function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
