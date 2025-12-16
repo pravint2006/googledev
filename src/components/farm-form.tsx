@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -90,6 +90,10 @@ export default function FarmForm() {
 
   const progressValue = (step / 2) * 100;
 
+  const handleSetValves = useCallback((newValves: GateValve[]) => {
+    setValves(newValves);
+  }, []);
+
   return (
     <Card>
       <CardHeader>
@@ -143,7 +147,7 @@ export default function FarmForm() {
                             <MapPicker 
                                 isEditable={true} 
                                 valves={valves} 
-                                setValves={setValves} 
+                                setValves={handleSetValves} 
                                 valveCount={watchedValues.valveCount}
                                 mapTypeId="satellite"
                                 center={tamilNaduCenter}
