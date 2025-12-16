@@ -3,6 +3,13 @@ import { PT_Sans } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
+import SidebarNav from '@/components/sidebar-nav';
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarTrigger,
+  SidebarRail,
+} from '@/components/ui/sidebar';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
