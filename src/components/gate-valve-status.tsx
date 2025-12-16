@@ -38,7 +38,7 @@ export default function GateValveStatus({ valve, onToggle, disabled = false }: G
               isChecked ? 'bg-primary/20' : 'bg-muted'
           )}>
             {isChecked 
-              ? <Power className="h-5 w-5 text-primary animate-pulse" />
+              ? <Power className="h-5 w-5 text-primary" />
               : <PowerOff className="h-5 w-5 text-muted-foreground" />
             }
           </div>

@@ -3,10 +3,11 @@
 import { useState, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { MapPin, X, Loader2 } from 'lucide-react';
-import { type GateValve } from '@/lib/data';
+import { type GateValve, isGeoPoint } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
+import { GeoPoint } from 'firebase/firestore';
 
 interface MapPickerProps {
   isEditable: boolean;
@@ -47,6 +48,15 @@ export default function MapPicker({
 
   const [activeValve, setActiveValve] = useState<GateValve | null>(null);
 
+  const getPosition = (
+    position: { lat: number; lng: number } | GeoPoint
+  ): { lat: number; lng: number } => {
+    if (isGeoPoint(position)) {
+      return { lat: position.latitude, lng: position.longitude };
+    }
+    return position;
+  };
+  
   const handleMapClick = (e: google.maps.MapMouseEvent) => {
     if (!isEditable || !setValves || (valveCount !== undefined && valves.length >= valveCount) || !e.latLng) {
       return;
@@ -85,7 +95,7 @@ export default function MapPicker({
       };
   }, []);
   
-  const mapCenter = center || (valves.length > 0 ? valves[0].position : defaultCenter);
+  const mapCenter = center || (valves.length > 0 ? getPosition(valves[0].position) : defaultCenter);
   const zoomLevel = center && valves.length === 0 ? 8 : 17;
 
   if (loadError) {
@@ -119,7 +129,7 @@ export default function MapPicker({
         {valves.map(valve => (
           <Marker
             key={valve.id}
-            position={valve.position}
+            position={getPosition(valve.position)}
             onClick={() => setActiveValve(valve)}
             icon={getMarkerIcon(valve.status)}
             label={{
@@ -133,7 +143,7 @@ export default function MapPicker({
 
         {activeValve && (
           <InfoWindow
-            position={activeValve.position}
+            position={getPosition(activeValve.position)}
             onCloseClick={() => setActiveValve(null)}
           >
             <div className="w-60 p-1">

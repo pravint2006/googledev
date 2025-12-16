@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { useFarmStore } from '@/hooks/use-farm-store';
 import { type GateValve } from '@/lib/data';
 import MapPicker from './map-picker';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from './ui/progress';
@@ -43,12 +42,13 @@ export default function FarmForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, watch, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       farmName: '',
       valveCount: 1,
     },
+    mode: 'onChange',
   });
 
   const watchedValues = watch();
@@ -61,7 +61,7 @@ export default function FarmForm() {
     setStep(1);
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     if (valves.length !== watchedValues.valveCount) {
       toast({
         variant: 'destructive',
@@ -72,20 +72,18 @@ export default function FarmForm() {
     }
     
     setIsSubmitting(true);
+    
+    await addFarm({
+      name: watchedValues.farmName,
+      gateValves: valves,
+      mapImageUrl: '', // This will be handled by the map component itself now
+      mapImageHint: 'satellite farm',
+    });
+    
+    // Brief pause to allow Firestore to propagate before redirecting
     setTimeout(() => {
-        addFarm({
-          name: watchedValues.farmName,
-          gateValves: valves,
-          mapImageUrl: '', // No longer using static image
-          mapImageHint: 'satellite farm',
-        });
-        toast({
-            title: "Farm Created!",
-            description: `Your new farm "${watchedValues.farmName}" is ready.`,
-        });
         router.push('/farms');
-    }, 1500)
-
+    }, 500);
   };
 
   const progressValue = (step / 2) * 100;
@@ -93,7 +91,7 @@ export default function FarmForm() {
   const handleSetValves = useCallback((newValves: GateValve[]) => {
     setValves(newValves);
   }, []);
-
+  
   const isSaveDisabled = isSubmitting || valves.length < watchedValues.valveCount;
 
   return (
@@ -138,7 +136,7 @@ export default function FarmForm() {
                             </div>
                         </CardContent>
                         <CardFooter className="justify-end">
-                            <Button type="submit">Next</Button>
+                            <Button type="submit" disabled={!isValid}>Next</Button>
                         </CardFooter>
                     </form>
                 )}

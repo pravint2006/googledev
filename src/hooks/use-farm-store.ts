@@ -1,84 +1,126 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { type Farm, type GateValve, initialFarms } from '@/lib/data';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { type Farm } from '@/lib/data';
 import { useToast } from './use-toast';
+import {
+  addFarm as addFarmFs,
+  deleteFarm as deleteFarmFs,
+  getFarms,
+  toggleValveStatus as toggleValveStatusFs,
+} from '@/lib/firebase/firestore';
+import { useAuth } from './use-auth.tsx';
 
 export function useFarmStore() {
+  const { user } = useAuth();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      const storedFarms = localStorage.getItem('agriGateFarms');
-      if (storedFarms) {
-        setFarms(JSON.parse(storedFarms));
-      } else {
-        setFarms(initialFarms);
-      }
-    } catch (error) {
-      console.error("Failed to load farms from localStorage", error);
-      setFarms(initialFarms);
-    } finally {
+    if (user) {
+      const unsubscribe = getFarms(user.uid, (newFarms) => {
+        setFarms(newFarms);
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setFarms([]);
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
-    if (!isLoading) {
-      try {
-        localStorage.setItem('agriGateFarms', JSON.stringify(farms));
-      } catch (error) {
-        console.error("Failed to save farms to localStorage", error);
+  const addFarm = useCallback(
+    async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
+      if (!user) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'You must be logged in to add a farm.',
+        });
+        return;
       }
-    }
-  }, [farms, isLoading]);
+      try {
+        await addFarmFs(user.uid, farmData);
+        toast({
+          title: 'Farm Created!',
+          description: `Your new farm "${farmData.name}" is ready.`,
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error Creating Farm',
+          description:
+            error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+      }
+    },
+    [user, toast]
+  );
 
-  const addFarm = useCallback((farmData: Omit<Farm, 'id'>) => {
-    const newFarm: Farm = {
-      ...farmData,
-      id: `farm-${Date.now()}`,
-    };
-    setFarms(prevFarms => [...prevFarms, newFarm]);
-  }, []);
-
-  const deleteFarm = useCallback((farmId: string) => {
-    const farmToDelete = farms.find(f => f.id === farmId);
-    if (farmToDelete) {
-      setFarms(prevFarms => prevFarms.filter(farm => farm.id !== farmId));
-      toast({
-        title: "Farm Deleted",
-        description: `Successfully deleted "${farmToDelete.name}".`,
-      });
-    }
-  }, [farms, toast]);
-
-  const getFarmById = useCallback((id: string) => {
-    return farms.find(farm => farm.id === id);
-  }, [farms]);
-
-  const toggleValveStatus = useCallback((farmId: string, valveId: string) => {
-    setFarms(prevFarms => {
-      return prevFarms.map(farm => {
-        if (farm.id === farmId) {
-          const updatedValves = farm.gateValves.map(valve => {
-            if (valve.id === valveId) {
-              const newStatus = valve.status === 'open' ? 'closed' : 'open';
-              toast({
-                title: `Valve ${newStatus === 'open' ? 'Opened' : 'Closed'}`,
-                description: `Valve "${valve.name}" in farm "${farm.name}" is now ${newStatus}.`,
-              });
-              return { ...valve, status: newStatus };
-            }
-            return valve;
+  const deleteFarm = useCallback(
+    async (farmId: string) => {
+      const farmToDelete = farms.find((f) => f.id === farmId);
+      if (farmToDelete) {
+        try {
+          await deleteFarmFs(farmId);
+          toast({
+            title: 'Farm Deleted',
+            description: `Successfully deleted "${farmToDelete.name}".`,
           });
-          return { ...farm, gateValves: updatedValves };
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Error Deleting Farm',
+            description:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred.',
+          });
         }
-        return farm;
-      });
-    });
-  }, [toast]);
+      }
+    },
+    [farms, toast]
+  );
+
+  const getFarmById = useCallback(
+    (id: string) => {
+      return farms.find((farm) => farm.id === id);
+    },
+    [farms]
+  );
+
+  const toggleValveStatus = useCallback(
+    async (farmId: string, valveId: string) => {
+      const farm = farms.find((f) => f.id === farmId);
+      const valve = farm?.gateValves.find((v) => v.id === valveId);
+      if (farm && valve) {
+        try {
+          await toggleValveStatusFs(farmId, valveId);
+          toast({
+            title: `Valve ${
+              valve.status === 'open' ? 'Closed' : 'Opened'
+            }`,
+            description: `Valve "${valve.name}" in farm "${
+              farm.name
+            }" is now ${
+              valve.status === 'open' ? 'closed' : 'open'
+            }.`,
+          });
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Error updating valve',
+            description:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred.',
+          });
+        }
+      }
+    },
+    [farms, toast]
+  );
 
   return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
 }

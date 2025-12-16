@@ -8,20 +8,47 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
+import { useToast } from '@/hooks/use-toast';
 
 export function LoginForm() {
   const router = useRouter();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('farmer@example.com');
+  const [password, setPassword] = useState('password');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you'd handle auth state here.
-      // For this prototype, we just navigate.
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
-    }, 1000);
+    } catch (error) {
+      let errorMessage = 'An unknown error occurred.';
+      if (error instanceof Error) {
+        switch ((error as any).code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = 'Invalid email or password. Please try again.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          default:
+            errorMessage = 'Failed to log in. Please try again later.';
+            break;
+        }
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: errorMessage,
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -37,11 +64,11 @@ export function LoginForm() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="farmer@example.com" required defaultValue="farmer@example.com" />
+            <Input id="email" type="email" placeholder="farmer@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required defaultValue="password" />
+            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
           </div>
         </CardContent>
         <CardFooter>
