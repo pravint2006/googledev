@@ -16,10 +16,17 @@ export function useFarmStore() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [isDevAdmin, setIsDevAdmin] = useState(false);
+  
+  useEffect(() => {
+    setIsDevAdmin(sessionStorage.getItem('dev-admin-login') === 'true');
+  }, []);
+
+  const currentUserId = user?.uid || (isDevAdmin ? 'dev-admin' : null);
 
   useEffect(() => {
-    if (user) {
-      const unsubscribe = getFarms(user.uid, (newFarms) => {
+    if (currentUserId) {
+      const unsubscribe = getFarms(currentUserId, (newFarms) => {
         setFarms(newFarms);
         setIsLoading(false);
       });
@@ -28,11 +35,11 @@ export function useFarmStore() {
       setFarms([]);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [currentUserId]);
 
   const addFarm = useCallback(
     async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
-      if (!user) {
+      if (!currentUserId) {
         toast({
           variant: 'destructive',
           title: 'Authentication Error',
@@ -41,7 +48,7 @@ export function useFarmStore() {
         return;
       }
       try {
-        await addFarmFs(user.uid, farmData);
+        await addFarmFs(currentUserId, farmData);
         toast({
           title: 'Farm Created!',
           description: `Your new farm "${farmData.name}" is ready.`,
@@ -55,7 +62,7 @@ export function useFarmStore() {
         });
       }
     },
-    [user, toast]
+    [currentUserId, toast]
   );
 
   const deleteFarm = useCallback(
