@@ -25,8 +25,8 @@ const containerStyle = {
 
 // Center map on the location from the user's screenshot
 const defaultCenter = {
-  lat: 10.8276428,
-  lng: 77.0685764,
+  lat: 24.842233,
+  lng: 67.026117,
 };
 
 export default function MapPicker({
@@ -104,7 +104,8 @@ export default function MapPicker({
         options={{
           disableDefaultUI: true,
           zoomControl: true,
-          clickableIcons: false
+          clickableIcons: false,
+          mapTypeId: 'satellite'
         }}
         onClick={handleMapClick}
       >
