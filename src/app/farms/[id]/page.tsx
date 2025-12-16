@@ -78,7 +78,7 @@ export default function FarmDetailPage() {
                   <AlertTitle>No Valves</AlertTitle>
                   <AlertDescription>
                     This farm has no gate valves configured.
-                  </Description>
+                  </AlertDescription>
                 </Alert>
               )}
             </CardContent>
