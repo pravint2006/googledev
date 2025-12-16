@@ -53,6 +53,7 @@ export default function FarmDetailPage() {
               <MapPicker
                 isEditable={false}
                 valves={farm.gateValves}
+                mapTypeId='satellite'
               />
             </CardContent>
           </Card>

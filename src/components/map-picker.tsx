@@ -7,15 +7,15 @@ import { type GateValve } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
 
 interface MapPickerProps {
   isEditable: boolean;
   valves: GateValve[];
   setValves?: (valves: GateValve[]) => void;
   valveCount?: number;
-  mapImageUrl?: string; // Kept for data consistency, but not used for rendering map
-  mapImageHint?: string; // Kept for data consistency
+  mapImageUrl?: string;
+  mapImageHint?: string;
+  mapTypeId?: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
 }
 
 const containerStyle = {
@@ -23,7 +23,7 @@ const containerStyle = {
   height: '100%',
 };
 
-// Center map on the location from the user's screenshot
+// Center map on KPT Cricket Ground
 const defaultCenter = {
   lat: 24.842233,
   lng: 67.026117,
@@ -34,6 +34,7 @@ export default function MapPicker({
   valves,
   setValves,
   valveCount,
+  mapTypeId = 'roadmap',
 }: MapPickerProps) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -70,7 +71,7 @@ export default function MapPicker({
   };
 
   const getMarkerIcon = useCallback((status: 'open' | 'closed') => {
-      if (!window.google) return undefined;
+      if (typeof window === 'undefined' || !window.google) return undefined;
       return {
         path: window.google.maps.SymbolPath.CIRCLE,
         scale: 8,
@@ -82,7 +83,7 @@ export default function MapPicker({
   }, []);
 
   if (loadError) {
-    return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly in your .env.local file.</div>;
+    return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly.</div>;
   }
 
   if (!isLoaded) {
@@ -100,12 +101,12 @@ export default function MapPicker({
         mapContainerStyle={containerStyle}
         center={valves.length > 0 ? valves[0].position : defaultCenter}
         zoom={17}
-        mapTypeId="satellite"
+        mapTypeId={mapTypeId}
         options={{
           disableDefaultUI: true,
           zoomControl: true,
           clickableIcons: false,
-          mapTypeId: 'satellite'
+          mapTypeId: mapTypeId
         }}
         onClick={handleMapClick}
       >

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useFarmStore } from '@/hooks/use-farm-store';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { PlusCircle, Tractor, ChevronRight } from 'lucide-react';
+import { PlusCircle, Tractor } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FarmCard from '@/components/farm-card';
 
@@ -35,7 +35,7 @@ export default function DashboardPage() {
       </div>
 
       {farms.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
+        <Card className="flex flex-col items-center justify-center p-12 text-center mt-10">
           <Tractor className="h-16 w-16 text-muted-foreground mb-4" />
           <CardTitle className="mb-2 font-headline">No Farms Yet</CardTitle>
           <CardDescription className="mb-6 max-w-sm">
