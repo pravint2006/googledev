@@ -31,8 +31,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useState } from 'react';
-import { useUser } from '@/firebase/auth/use-user';
-import { useAuth } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
 const navLinks = [
@@ -51,8 +50,10 @@ export default function Header() {
   const isLoggedIn = !!user;
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    if (auth) {
+      await signOut(auth);
+      router.push('/login');
+    }
   };
   
   const getInitials = (name: string | null | undefined) => {

@@ -61,6 +61,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
 
     if (password.length < 6) {
@@ -118,6 +119,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!auth) return;
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {

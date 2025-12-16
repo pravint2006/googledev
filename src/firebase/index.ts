@@ -1,4 +1,6 @@
 
+'use client';
+
 import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -8,8 +10,8 @@ export const firebaseConfig: FirebaseOptions = {
   appId: "1:325810737238:web:e3460f5bf36cdf10f2ebf7",
   apiKey: "AIzaSyAsX9NgE2I_DKnfKXDl3k75GH4L2dLgRFg",
   authDomain: "studio-9781884869-4d982.firebaseapp.com",
-  messagingSenderId: "325810737238",
-  storageBucket: "studio-9781884869-4d982.appspot.com"
+  storageBucket: "studio-9781884869-4d982.appspot.com",
+  messagingSenderId: "325810737238"
 };
 
 export const initializeFirebase = () => {

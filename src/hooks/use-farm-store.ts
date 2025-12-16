@@ -22,6 +22,7 @@ export function useFarmStore() {
 
   useEffect(() => {
     if (currentUserId) {
+      setIsLoading(true);
       const unsubscribe = getFarms(currentUserId, (newFarms) => {
         setFarms(newFarms);
         setIsLoading(false);
@@ -45,10 +46,7 @@ export function useFarmStore() {
       }
       try {
         await addFarmFs(currentUserId, farmData);
-        toast({
-          title: 'Farm Created!',
-          description: `Your new farm "${farmData.name}" is ready.`,
-        });
+        // Toast is now handled in the component after successful navigation
       } catch (error) {
         toast({
           variant: 'destructive',
@@ -56,6 +54,7 @@ export function useFarmStore() {
           description:
             error instanceof Error ? error.message : 'An unknown error occurred.',
         });
+        throw error; // Re-throw error to be caught in the form
       }
     },
     [currentUserId, toast]
@@ -100,15 +99,10 @@ export function useFarmStore() {
       if (farm && valve) {
         try {
           await toggleValveStatusFs(farmId, valveId);
+          // Optimistic update is handled by the listener, but a toast provides feedback.
           toast({
-            title: `Valve ${
-              valve.status === 'open' ? 'Closed' : 'Opened'
-            }`,
-            description: `Valve "${valve.name}" in farm "${
-              farm.name
-            }" is now ${
-              valve.status === 'open' ? 'closed' : 'open'
-            }.`,
+            title: `Valve status changed`,
+            description: `Valve "${valve.name}" is now ${valve.status === 'open' ? 'closing' : 'opening'}.`,
           });
         } catch (error) {
           toast({

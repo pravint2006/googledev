@@ -74,20 +74,24 @@ export default function FarmForm() {
     
     setIsSubmitting(true);
     
-    await addFarm({
-      name: watchedValues.farmName,
-      gateValves: valves,
-      mapImageUrl: '',
-      mapImageHint: 'satellite farm',
-    });
-    
-    setIsSubmitting(false);
-    toast({
-        title: "Farm Saved!",
-        description: "Your new farm has been created successfully."
-    });
+    try {
+      await addFarm({
+        name: watchedValues.farmName,
+        gateValves: valves,
+        mapImageUrl: '',
+        mapImageHint: 'satellite farm',
+      });
+      
+      toast({
+          title: "Farm Saved!",
+          description: "Your new farm has been created successfully."
+      });
 
-    router.push('/farms');
+      router.push('/farms');
+    } catch(e) {
+      // Error toast is already handled by the hook
+      setIsSubmitting(false);
+    }
   };
 
   const progressValue = (step / 2) * 100;

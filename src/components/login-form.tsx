@@ -52,6 +52,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
 
     try {
@@ -84,6 +85,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!auth) return;
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
