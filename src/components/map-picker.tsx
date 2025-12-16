@@ -1,48 +1,57 @@
 'use client';
 
-import { useState, useRef, MouseEvent } from 'react';
-import Image from 'next/image';
-import { MapPin, X } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { MapPin, X, Loader2 } from 'lucide-react';
 import { type GateValve } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Skeleton } from './ui/skeleton';
 
 interface MapPickerProps {
   isEditable: boolean;
   valves: GateValve[];
   setValves?: (valves: GateValve[]) => void;
   valveCount?: number;
-  mapImageUrl: string;
-  mapImageHint: string;
+  mapImageUrl?: string; // Kept for data consistency, but not used for rendering map
+  mapImageHint?: string; // Kept for data consistency
 }
+
+const containerStyle = {
+  width: '100%',
+  height: '100%',
+};
+
+// A default center, e.g., a central location in a farming region.
+const defaultCenter = {
+  lat: 36.7783,
+  lng: -119.4179,
+};
 
 export default function MapPicker({
   isEditable,
   valves,
   setValves,
   valveCount,
-  mapImageUrl,
-  mapImageHint,
 }: MapPickerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  });
 
-  const handleMapClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (!isEditable || !mapRef.current || !setValves || (valveCount !== undefined && valves.length >= valveCount)) {
+  const [activeValve, setActiveValve] = useState<GateValve | null>(null);
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (!isEditable || !setValves || (valveCount !== undefined && valves.length >= valveCount) || !e.latLng) {
       return;
     }
-
-    const rect = mapRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     const newValve: GateValve = {
       id: `new-valve-${Date.now()}`,
       name: `Valve ${valves.length + 1}`,
       status: 'closed',
-      position: { x, y },
+      position: { lat: e.latLng.lat(), lng: e.latLng.lng() },
     };
     setValves([...valves, newValve]);
   };
@@ -50,31 +59,107 @@ export default function MapPicker({
   const handleValveNameChange = (id: string, newName: string) => {
     if (!setValves) return;
     setValves(valves.map(v => v.id === id ? { ...v, name: newName } : v));
+     setActiveValve(v => v && v.id === id ? { ...v, name: newName } : v);
   };
   
   const removeValve = (id: string) => {
     if (!setValves) return;
     setValves(valves.filter(v => v.id !== id));
+    setActiveValve(null);
+  }
+
+  const getMarkerIcon = (status: 'open' | 'closed') => ({
+    path: MapPin,
+    fillColor: status === 'open' ? '#10B981' : '#EF4444', // Green-500 for open, Red-500 for closed
+    fillOpacity: 0.8,
+    strokeWeight: 0,
+    scale: 1.5,
+    anchor: new google.maps.Point(12, 24),
+  });
+
+  if (loadError) {
+    return <div>Error loading maps. Please check the API key.</div>;
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="ml-4">Loading Map...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted" ref={mapRef} onClick={handleMapClick}>
-      <Image
-        src={mapImageUrl}
-        alt="Farm satellite view"
-        fill
-        className="object-cover"
-        data-ai-hint={mapImageHint}
-      />
-      {valves.map(valve => (
-        <ValveMarker 
-            key={valve.id} 
-            valve={valve} 
-            isEditable={isEditable} 
-            onNameChange={handleValveNameChange}
-            onRemove={removeValve}
-        />
-      ))}
+    <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
+       <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={valves.length > 0 ? valves[0].position : defaultCenter}
+        zoom={15}
+        mapTypeId="satellite"
+        options={{
+          disableDefaultUI: true,
+          zoomControl: true,
+          clickableIcons: false
+        }}
+        onClick={handleMapClick}
+      >
+        {valves.map(valve => (
+          <Marker
+            key={valve.id}
+            position={valve.position}
+            onClick={() => setActiveValve(valve)}
+            icon={{
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: valve.status === 'open' ? '#22c55e' : '#ef4444',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            }}
+            label={{
+                text: 'V',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 'bold',
+            }}
+          />
+        ))}
+
+        {activeValve && (
+          <InfoWindow
+            position={activeValve.position}
+            onCloseClick={() => setActiveValve(null)}
+          >
+            <div className="w-60 p-1">
+              {isEditable ? (
+                 <div className="grid gap-2">
+                    <h4 className="font-medium leading-none text-base">{activeValve.name}</h4>
+                    <p className="text-xs text-muted-foreground">
+                        You can rename this valve below.
+                    </p>
+                    <Input 
+                        id="name" 
+                        value={activeValve.name}
+                        onChange={(e) => handleValveNameChange(activeValve.id, e.target.value)}
+                        className="col-span-2 h-8"
+                    />
+                    <Button variant="destructive" size="sm" onClick={() => removeValve(activeValve.id)} className="mt-2">
+                        <X className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                </div>
+              ) : (
+                <div>
+                  <h4 className="font-semibold">{activeValve.name}</h4>
+                  <p className={cn("text-sm", activeValve.status === 'open' ? 'text-green-600' : 'text-red-600')}>
+                    Status: {activeValve.status.charAt(0).toUpperCase() + activeValve.status.slice(1)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </InfoWindow>
+        )}
+      </GoogleMap>
       {isEditable && (
         <div className="absolute top-2 left-2 bg-background/80 text-foreground px-3 py-1.5 rounded-lg text-sm font-medium shadow-md">
             Click on the map to place a valve. Placed: {valves.length} / {valveCount}
@@ -83,67 +168,3 @@ export default function MapPicker({
     </div>
   );
 }
-
-
-function ValveMarker({ valve, isEditable, onNameChange, onRemove }: { valve: GateValve, isEditable: boolean, onNameChange: (id: string, name: string) => void, onRemove: (id: string) => void }) {
-    const [name, setName] = useState(valve.name);
-    
-    const handleSave = () => {
-        onNameChange(valve.id, name);
-    };
-
-    const content = (
-        <div 
-            className="absolute -translate-x-1/2 -translate-y-full" 
-            style={{ left: `${valve.position.x}%`, top: `${valve.position.y}%` }}
-        >
-            <MapPin className={cn(
-                "h-8 w-8 text-primary drop-shadow-lg", 
-                isEditable ? "cursor-pointer hover:scale-110 transition-transform" : "cursor-default",
-                valve.status === 'open' ? 'text-green-500 fill-green-500/30' : 'text-red-500 fill-red-500/30'
-            )} />
-        </div>
-    );
-    
-    if (isEditable) {
-        return (
-            <Popover>
-                <PopoverTrigger asChild>{content}</PopoverTrigger>
-                <PopoverContent className="w-60">
-                    <div className="grid gap-4">
-                        <div className="space-y-2">
-                            <h4 className="font-medium leading-none">Edit Valve</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Set a name for this gate valve.
-                            </p>
-                        </div>
-                        <div className="grid gap-2">
-                            <Input 
-                                id="name" 
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="col-span-2 h-8"
-                            />
-                        </div>
-                         <div className="flex justify-between">
-                            <Button variant="destructive" size="sm" onClick={() => onRemove(valve.id)}>
-                                <X className="h-4 w-4 mr-1" /> Remove
-                            </Button>
-                            <Button size="sm" onClick={handleSave}>Save</Button>
-                        </div>
-                    </div>
-                </PopoverContent>
-            </Popover>
-        )
-    }
-
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>{content}</TooltipTrigger>
-            <TooltipContent>
-                <p>{valve.name} - <span className={cn(valve.status === 'open' ? 'text-green-500' : 'text-red-500')}>{valve.status}</span></p>
-            </TooltipContent>
-        </Tooltip>
-    );
-}
-

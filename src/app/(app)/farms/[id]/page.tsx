@@ -1,7 +1,7 @@
 'use client';
 
 import { useFarmStore } from '@/hooks/use-farm-store';
-import { useParams, notFound } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GateValveStatus from '@/components/gate-valve-status';
 import MapPicker from '@/components/map-picker';
@@ -53,8 +53,6 @@ export default function FarmDetailPage() {
               <MapPicker
                 isEditable={false}
                 valves={farm.gateValves}
-                mapImageUrl={farm.mapImageUrl}
-                mapImageHint={farm.mapImageHint}
               />
             </CardContent>
           </Card>
@@ -80,7 +78,7 @@ export default function FarmDetailPage() {
                   <AlertTitle>No Valves</AlertTitle>
                   <AlertDescription>
                     This farm has no gate valves configured.
-                  </AlertDescription>
+                  </Description>
                 </Alert>
               )}
             </CardContent>

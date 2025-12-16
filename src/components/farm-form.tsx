@@ -40,7 +40,6 @@ export default function FarmForm() {
   const { addFarm } = useFarmStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const mapImage = PlaceHolderImages.find(p => p.id === 'farm-map-new');
 
   const { control, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -75,8 +74,8 @@ export default function FarmForm() {
         addFarm({
           name: watchedValues.farmName,
           gateValves: valves,
-          mapImageUrl: mapImage?.imageUrl || '',
-          mapImageHint: mapImage?.imageHint || 'satellite farm',
+          mapImageUrl: '', // No longer using static image
+          mapImageHint: 'satellite farm',
         });
         toast({
             title: "Farm Created!",
@@ -136,7 +135,7 @@ export default function FarmForm() {
                     </form>
                 )}
 
-                {step === 2 && mapImage && (
+                {step === 2 && (
                     <>
                         <CardContent>
                             <MapPicker 
@@ -144,8 +143,6 @@ export default function FarmForm() {
                                 valves={valves} 
                                 setValves={setValves} 
                                 valveCount={watchedValues.valveCount}
-                                mapImageUrl={mapImage.imageUrl}
-                                mapImageHint={mapImage.imageHint}
                             />
                         </CardContent>
                         <CardFooter className="justify-between">
