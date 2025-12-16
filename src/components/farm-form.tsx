@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +43,7 @@ export default function FarmForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, formState: { errors }, trigger } = useForm<FormData>({
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       farmName: '',
@@ -52,13 +52,6 @@ export default function FarmForm() {
   });
 
   const watchedValues = watch();
-
-  useEffect(() => {
-    if (step === 2) {
-      trigger(); 
-    }
-  }, [valves, step, trigger]);
-
 
   const onFirstStepSubmit = () => {
     setStep(2);
@@ -100,6 +93,8 @@ export default function FarmForm() {
   const handleSetValves = useCallback((newValves: GateValve[]) => {
     setValves(newValves);
   }, []);
+
+  const isSaveDisabled = isSubmitting || valves.length < watchedValues.valveCount;
 
   return (
     <Card>
@@ -165,7 +160,7 @@ export default function FarmForm() {
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                             </Button>
-                            <Button onClick={handleFinalSubmit} disabled={isSubmitting || valves.length !== watchedValues.valveCount}>
+                            <Button onClick={handleFinalSubmit} disabled={isSaveDisabled}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 {isSubmitting ? 'Saving...' : 'Save Farm'}
                             </Button>
