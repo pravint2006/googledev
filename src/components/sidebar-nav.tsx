@@ -8,12 +8,10 @@ import {
   PlusCircle,
   LogOut,
   Settings,
-  ChevronLeft,
   MoreVertical,
 } from 'lucide-react';
 
 import {
-  Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -32,7 +30,7 @@ import { cn } from '@/lib/utils';
 export default function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleSidebar, state } = useSidebar();
+  const { state } = useSidebar();
 
   const handleLogout = () => {
     // Simulate logout
@@ -42,21 +40,10 @@ export default function SidebarNav() {
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center justify-between">
-          <AppLogo />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={toggleSidebar}
-            aria-label="Close sidebar"
-          >
-            <ChevronLeft className="size-5" />
-          </Button>
-        </div>
+        <AppLogo />
       </SidebarHeader>
 
-      <SidebarContent className="p-2">
+      <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -93,7 +80,7 @@ export default function SidebarNav() {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <div className="flex items-center justify-center gap-3 p-2">
+        <div className="flex items-center gap-3 p-2">
           <Avatar className="size-8">
             <AvatarImage
               src="https://picsum.photos/seed/user/40/40"
