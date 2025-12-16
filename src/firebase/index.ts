@@ -5,6 +5,7 @@ import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+// This is the complete and correct Firebase configuration.
 export const firebaseConfig: FirebaseOptions = {
   projectId: "studio-9781884869-4d982",
   appId: "1:325810737238:web:e3460f5bf36cdf10f2ebf7",
@@ -14,6 +15,7 @@ export const firebaseConfig: FirebaseOptions = {
   messagingSenderId: "325810737238"
 };
 
+// A single function to initialize and return all Firebase services.
 export const initializeFirebase = () => {
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   const auth = getAuth(app);
@@ -21,6 +23,7 @@ export const initializeFirebase = () => {
   return { app, auth, firestore };
 };
 
+// Export the necessary hooks and providers for use in the application.
 export {
   useUser,
   type User,
