@@ -80,5 +80,21 @@ export function useFarmStore() {
     });
   }, [toast]);
 
-  return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
+  const closeAllValves = useCallback((farmId: string) => {
+    setFarms(prevFarms => {
+      return prevFarms.map(farm => {
+        if (farm.id === farmId) {
+          const updatedValves = farm.gateValves.map(valve => ({ ...valve, status: 'closed' as const }));
+          toast({
+            title: "All Valves Closed",
+            description: `All gate valves for "${farm.name}" have been closed.`,
+          });
+          return { ...farm, gateValves: updatedValves };
+        }
+        return farm;
+      });
+    });
+  }, [toast]);
+
+  return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus, closeAllValves };
 }
