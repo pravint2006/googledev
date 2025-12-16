@@ -47,7 +47,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [email, setEmail] = useState('farmer@example.com');
+  const [email, setEmail] = useState('admin@gmail.com');
   const [password, setPassword] = useState('password');
 
   const handleLogin = async (e: React.FormEvent) => {
