@@ -143,6 +143,7 @@ export default function FarmForm() {
                                 valves={valves} 
                                 setValves={setValves} 
                                 valveCount={watchedValues.valveCount}
+                                mapTypeId="satellite"
                             />
                         </CardContent>
                         <CardFooter className="justify-between">
