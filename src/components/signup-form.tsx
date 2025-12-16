@@ -104,6 +104,9 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
           case 'auth/weak-password':
             errorMessage = 'The password is too weak. Please use a stronger one.';
             break;
+          case 'auth/operation-not-allowed':
+             errorMessage = 'Email/Password sign up is not enabled. Please use Google Sign-In.';
+             break;
           default:
             errorMessage = 'Failed to sign up. Please try again later.';
             break;
@@ -114,7 +117,8 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         title: 'Sign Up Failed',
         description: errorMessage,
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -124,6 +128,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
+      // The redirect result is handled on the login page after the user returns.
     } catch (error) {
       toast({
         variant: 'destructive',

@@ -40,6 +40,8 @@ export default function LoginPage() {
           });
           setIsLoading(false);
         });
+    } else {
+        setIsLoading(false);
     }
   }, [auth, router, toast]);
 

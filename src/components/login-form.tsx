@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
@@ -59,26 +59,25 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/invalid-credential') {
-        // This code is returned for either user-not-found or wrong-password.
-        // For dev convenience, we'll try to create the user.
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            // The onAuthStateChanged listener will handle the redirect
-        } catch (creationError: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Login Failed',
-                description: 'Invalid email or password.',
-            });
+       let errorMessage = 'An unknown error occurred.';
+        switch (error.code) {
+          case 'auth/invalid-credential':
+          case 'auth/wrong-password':
+          case 'auth/user-not-found':
+            errorMessage = 'Invalid email or password.';
+            break;
+          case 'auth/operation-not-allowed':
+             errorMessage = 'Email/Password sign in is not enabled. Please use Google Sign-In.';
+             break;
+          default:
+            errorMessage = error.message;
+            break;
         }
-      } else {
         toast({
             variant: 'destructive',
             title: 'Login Failed',
-            description: error.message || 'An unknown error occurred.',
+            description: errorMessage,
         });
-      }
     } finally {
         setIsLoading(false);
     }
@@ -90,6 +89,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
+      // The redirect result is handled on the login page after the user returns.
     } catch (error) {
       toast({
         variant: 'destructive',
