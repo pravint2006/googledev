@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
@@ -59,11 +59,37 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error: any) {
-       let errorMessage = 'An unknown error occurred.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // If user not found, try to create a new user
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          router.push('/dashboard');
+        } catch (createUserError: any) {
+            let errorMessage = 'An unknown error occurred during sign up.';
+            switch (createUserError.code) {
+                case 'auth/weak-password':
+                  errorMessage = 'The password is too weak. Please use a stronger one.';
+                  break;
+                case 'auth/email-already-in-use':
+                    errorMessage = 'This email is already in use by another account.';
+                    break;
+                case 'auth/operation-not-allowed':
+                    errorMessage = 'Email/Password sign in is not enabled in Firebase. Please use Google Sign-In.';
+                    break;
+                default:
+                  errorMessage = createUserError.message;
+                  break;
+            }
+             toast({
+                variant: 'destructive',
+                title: 'Sign-Up Failed',
+                description: errorMessage,
+            });
+        }
+      } else {
+        let errorMessage = 'An unknown error occurred.';
         switch (error.code) {
-          case 'auth/invalid-credential':
           case 'auth/wrong-password':
-          case 'auth/user-not-found':
             errorMessage = 'Invalid email or password.';
             break;
           case 'auth/operation-not-allowed':
@@ -78,6 +104,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             title: 'Login Failed',
             description: errorMessage,
         });
+      }
     } finally {
         setIsLoading(false);
     }
@@ -129,10 +156,15 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading} />
           </div>
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading || isGoogleLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Logging In...' : 'Log In with Email'}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading || isGoogleLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading ? 'Logging In...' : 'Log In with Email'}
+            </Button>
+             <Button type="submit" variant="secondary" className="w-full" disabled={isLoading || isGoogleLoading}>
+              Dev Login
+            </Button>
+          </div>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-4">
