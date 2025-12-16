@@ -7,6 +7,8 @@ import { type GateValve } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface MapPickerProps {
   isEditable: boolean;
@@ -24,11 +26,12 @@ const containerStyle = {
   height: '100%',
 };
 
-// Center map on KPT Cricket Ground, will be overridden by `center` prop if provided
 const defaultCenter = {
-  lat: 24.842233,
-  lng: 67.026117,
+  lat: 11.1271,
+  lng: 78.6569,
 };
+
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 export default function MapPicker({
   isEditable,
@@ -40,8 +43,8 @@ export default function MapPicker({
 }: MapPickerProps) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['marker'], // Ensure marker library is loaded
+    googleMapsApiKey: API_KEY,
+    libraries: ['marker'],
   });
 
   const [activeValve, setActiveValve] = useState<GateValve | null>(null);
@@ -87,6 +90,34 @@ export default function MapPicker({
   const mapCenter = center || (valves.length > 0 ? valves[0].position : defaultCenter);
   const zoomLevel = center && valves.length === 0 ? 8 : 17;
 
+  // If no API key, show a placeholder image instead of a broken map.
+  if (!API_KEY) {
+    const mapPlaceholder = PlaceHolderImages.find(p => p.id === 'farm-map-placeholder');
+    return (
+      <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted flex items-center justify-center text-center">
+        {mapPlaceholder ? (
+            <Image
+                src={mapPlaceholder.imageUrl}
+                alt={mapPlaceholder.description}
+                fill
+                className="object-cover"
+                data-ai-hint={mapPlaceholder.imageHint}
+            />
+        ) : (
+            <p>Google Maps API Key is missing. Showing placeholder.</p>
+        )}
+        <div className="absolute inset-0 bg-background/30 flex flex-col items-center justify-center p-4">
+             <div className="bg-background/80 p-4 rounded-lg shadow-lg">
+                <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <h3 className="font-bold text-lg">Map Unavailable</h3>
+                <p className="text-sm text-muted-foreground">
+                    A valid Google Maps API key is required to display the map.
+                </p>
+             </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly.</div>;
