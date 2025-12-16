@@ -6,35 +6,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GateValveStatus from '@/components/gate-valve-status';
 import MapPicker from '@/components/map-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Tractor, Trash2, PowerOff } from 'lucide-react';
+import { AlertCircle, Tractor, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
 import DeleteFarmDialog from '@/components/delete-farm-dialog';
-import CloseAllValvesDialog from '@/components/close-all-valves-dialog';
 
 export default function FarmDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === 'string' ? params.id : '';
-  const { getFarmById, toggleValveStatus, deleteFarm, isLoading, closeAllValves } = useFarmStore();
+  const { getFarmById, toggleValveStatus, deleteFarm, isLoading } = useFarmStore();
   const farm = getFarmById(id);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isCloseAllDialogOpen, setIsCloseAllDialogOpen] = useState(false);
 
   const handleDelete = () => {
     deleteFarm(id);
     router.push('/farms');
   };
 
-  const handleCloseAllValves = () => {
-    if (farm) {
-      closeAllValves(farm.id);
-    }
-    setIsCloseAllDialogOpen(false);
-  };
-  
   if (isLoading) {
     return <FarmDetailLoadingSkeleton />;
   }
@@ -54,7 +45,7 @@ export default function FarmDetailPage() {
     );
   }
 
-  const areAllValvesClosed = farm.gateValves.every(v => v.status === 'closed');
+  const openValvesCount = farm.gateValves.filter(v => v.status === 'open').length;
 
   return (
     <>
@@ -64,12 +55,6 @@ export default function FarmDetailPage() {
         onConfirm={handleDelete}
         farmName={farm.name}
       />
-      <CloseAllValvesDialog
-        isOpen={isCloseAllDialogOpen}
-        onClose={() => setIsCloseAllDialogOpen(false)}
-        onConfirm={handleCloseAllValves}
-        farmName={farm.name}
-      />
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
           <div>
@@ -77,10 +62,6 @@ export default function FarmDetailPage() {
             <p className="text-muted-foreground">Monitor and control your gate valves in real-time.</p>
           </div>
           <div className='flex items-center gap-2'>
-            <Button variant="outline" onClick={() => setIsCloseAllDialogOpen(true)} disabled={areAllValvesClosed}>
-              <PowerOff className="mr-2 h-4 w-4" />
-              Close All Valves
-            </Button>
             <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Farm
@@ -111,13 +92,17 @@ export default function FarmDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {farm.gateValves.length > 0 ? (
-                  farm.gateValves.map(valve => (
-                    <GateValveStatus
-                      key={valve.id}
-                      valve={valve}
-                      onToggle={() => toggleValveStatus(farm.id, valve.id)}
-                    />
-                  ))
+                  farm.gateValves.map(valve => {
+                    const isLastOpenValve = openValvesCount === 1 && valve.status === 'open';
+                    return (
+                      <GateValveStatus
+                        key={valve.id}
+                        valve={valve}
+                        onToggle={() => toggleValveStatus(farm.id, valve.id)}
+                        disabled={isLastOpenValve}
+                      />
+                    );
+                  })
                 ) : (
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
@@ -145,7 +130,6 @@ function FarmDetailLoadingSkeleton() {
           <Skeleton className="h-5 w-1/2" />
         </div>
         <div className="flex items-center gap-2">
-            <Skeleton className="h-10 w-36" />
             <Skeleton className="h-10 w-32" />
         </div>
       </div>
