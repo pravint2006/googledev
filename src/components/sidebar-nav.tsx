@@ -27,11 +27,12 @@ import { AppLogo } from '@/components/app-logo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export default function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state } = useSidebar();
 
   const handleLogout = () => {
     // Simulate logout
@@ -92,8 +93,8 @@ export default function SidebarNav() {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <div className="flex items-center gap-3 p-2">
-          <Avatar>
+        <div className="flex items-center justify-center gap-3 p-2">
+          <Avatar className="size-8">
             <AvatarImage
               src="https://picsum.photos/seed/user/40/40"
               alt="User Avatar"
@@ -101,7 +102,12 @@ export default function SidebarNav() {
             />
             <AvatarFallback>JD</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col overflow-hidden text-sm">
+          <div
+            className={cn(
+              'flex flex-col overflow-hidden text-sm transition-all',
+              state === 'collapsed' ? 'w-0' : 'w-full'
+            )}
+          >
             <span className="font-semibold truncate">John Doe</span>
             <span className="text-sidebar-foreground/70 truncate">
               john.doe@agrifuture.com
@@ -109,7 +115,7 @@ export default function SidebarNav() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+              <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 flex-shrink-0">
                 <MoreVertical className="h-4 w-4" />
                 <span className="sr-only">User Menu</span>
               </Button>
