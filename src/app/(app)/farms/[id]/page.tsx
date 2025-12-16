@@ -1,7 +1,7 @@
 'use client';
 
 import { useFarmStore } from '@/hooks/use-farm-store';
-import { notFound } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GateValveStatus from '@/components/gate-valve-status';
 import MapPicker from '@/components/map-picker';
@@ -11,9 +11,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-export default function FarmDetailPage({ params }: { params: { id: string } }) {
+export default function FarmDetailPage() {
+  const params = useParams();
+  const id = typeof params.id === 'string' ? params.id : '';
   const { getFarmById, toggleValveStatus, isLoading } = useFarmStore();
-  const farm = getFarmById(params.id);
+  const farm = getFarmById(id);
   
   if (isLoading) {
     return <FarmDetailLoadingSkeleton />;
