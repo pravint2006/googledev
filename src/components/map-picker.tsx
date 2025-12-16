@@ -7,8 +7,6 @@ import { type GateValve } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface MapPickerProps {
   isEditable: boolean;
@@ -89,35 +87,6 @@ export default function MapPicker({
   
   const mapCenter = center || (valves.length > 0 ? valves[0].position : defaultCenter);
   const zoomLevel = center && valves.length === 0 ? 8 : 17;
-
-  // If no API key, show a placeholder image instead of a broken map.
-  if (!API_KEY) {
-    const mapPlaceholder = PlaceHolderImages.find(p => p.id === 'farm-map-placeholder');
-    return (
-      <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted flex items-center justify-center text-center">
-        {mapPlaceholder ? (
-            <Image
-                src={mapPlaceholder.imageUrl}
-                alt={mapPlaceholder.description}
-                fill
-                className="object-cover"
-                data-ai-hint={mapPlaceholder.imageHint}
-            />
-        ) : (
-            <p>Google Maps API Key is missing. Showing placeholder.</p>
-        )}
-        <div className="absolute inset-0 bg-background/30 flex flex-col items-center justify-center p-4">
-             <div className="bg-background/80 p-4 rounded-lg shadow-lg">
-                <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <h3 className="font-bold text-lg">Map Unavailable</h3>
-                <p className="text-sm text-muted-foreground">
-                    A valid Google Maps API key is required to display the map.
-                </p>
-             </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loadError) {
     return <div className='text-center p-4'>Error loading maps. Please ensure the Google Maps API key is configured correctly.</div>;
