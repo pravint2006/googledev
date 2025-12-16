@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +43,7 @@ export default function FarmForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, watch, formState: { errors }, trigger } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       farmName: '',
@@ -52,6 +52,13 @@ export default function FarmForm() {
   });
 
   const watchedValues = watch();
+
+  useEffect(() => {
+    if (step === 2) {
+      trigger(); 
+    }
+  }, [valves, step, trigger]);
+
 
   const onFirstStepSubmit = () => {
     setStep(2);
