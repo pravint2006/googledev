@@ -31,6 +31,8 @@ const defaultCenter = {
 };
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+console.log('Using Google Maps API Key:', API_KEY ? 'Loaded' : 'Not Loaded or Empty');
+
 
 export default function MapPicker({
   isEditable,
