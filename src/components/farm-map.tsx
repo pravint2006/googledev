@@ -32,7 +32,7 @@ export default function FarmMap({ valves, center }: FarmMapProps) {
     clickableIcons: true,
     scrollwheel: true,
     zoomControl: true,
-    mapTypeId: 'satellite',
+    mapTypeId: 'hybrid',
   }), []);
 
   if (loadError) {

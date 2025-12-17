@@ -102,7 +102,7 @@ export default function MapPicker({
     clickableIcons: false,
     scrollwheel: true,
     zoomControl: true,
-    mapTypeId: 'satellite',
+    mapTypeId: 'hybrid',
   }), []);
 
   if (loadError) {
