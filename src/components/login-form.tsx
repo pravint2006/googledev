@@ -3,16 +3,13 @@
 
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from './ui/separator';
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -42,69 +39,10 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('password');
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth) return;
-    setIsLoading(true);
-
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
-    } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // If user not found, try to create a new user
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          router.push('/dashboard');
-        } catch (createUserError: any) {
-            let errorMessage = 'An unknown error occurred during sign up.';
-            switch (createUserError.code) {
-                case 'auth/weak-password':
-                  errorMessage = 'The password is too weak. Please use a stronger one.';
-                  break;
-                case 'auth/email-already-in-use':
-                    errorMessage = 'This email is already in use by another account.';
-                    break;
-                case 'auth/operation-not-allowed':
-                    errorMessage = 'Email/Password sign in is not enabled in Firebase. Please use Google Sign-In.';
-                    break;
-                default:
-                  errorMessage = createUserError.message;
-                  break;
-            }
-             toast({
-                variant: 'destructive',
-                title: 'Sign-Up Failed',
-                description: errorMessage,
-            });
-        }
-      } else if (error.code === 'auth/operation-not-allowed') {
-          toast({
-              variant: 'destructive',
-              title: 'Login Failed',
-              description: 'Email/Password sign-in is not enabled for this project. Please use Google Sign-In.',
-          });
-      }
-      else {
-        toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: error.message,
-        });
-      }
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
+  
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     setIsGoogleLoading(true);
@@ -130,32 +68,13 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           <AppLogo className="text-foreground" />
         </div>
         <CardTitle className="font-headline">Welcome Back</CardTitle>
-        <CardDescription>Select a method to manage your farms.</CardDescription>
+        <CardDescription>Sign in to manage your farms.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
           Sign in with Google
         </Button>
-        <div className="flex items-center gap-4">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <Separator className="flex-1" />
-        </div>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="farmer@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading || isGoogleLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading} />
-          </div>
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading || isGoogleLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Logging In...' : 'Log In / Sign Up with Email'}
-          </Button>
-        </form>
       </CardContent>
       <CardFooter className="flex-col gap-4">
         <p className="text-xs text-muted-foreground">

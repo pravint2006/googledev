@@ -44,7 +44,7 @@ let memoryFarms: Farm[] = [...sampleFarms.map(f => ({
 
 
 export function useFarmStore() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -52,25 +52,20 @@ export function useFarmStore() {
   const currentUserId = user?.uid;
 
   useEffect(() => {
-    setIsLoading(true);
-    // When a user logs in, we'll assign them the sample data for this session.
-    // In a real app, you'd fetch this from a database.
-    if (currentUserId) {
-      const userFarms = memoryFarms.map(farm => ({ ...farm, ownerId: currentUserId }));
-      setFarms(userFarms);
-    } else {
-      setFarms([]);
+    // Only proceed when user loading is finished.
+    if (!userLoading) {
+      setIsLoading(true);
+      // When a user logs in, we'll assign them the sample data for this session.
+      // In a real app, you'd fetch this from a database.
+      if (currentUserId) {
+        const userFarms = memoryFarms.map(farm => ({ ...farm, ownerId: currentUserId }));
+        setFarms(userFarms);
+      } else {
+        setFarms([]);
+      }
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [currentUserId]);
-
-  const updateMemoryAndState = (newFarms: Farm[]) => {
-    // This function now primarily updates the component's state, 
-    // as the `memoryFarms` is just for initial data.
-    if (currentUserId) {
-        setFarms(newFarms.filter(f => f.ownerId === currentUserId));
-    }
-  }
+  }, [currentUserId, userLoading]);
 
   const addFarm = useCallback(
     async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
