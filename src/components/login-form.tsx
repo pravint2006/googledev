@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithRedirect, GoogleAuthProvider, signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Separator } from './ui/separator';
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -40,8 +43,12 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const auth = useAuth();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   
   const handleGoogleSignIn = async () => {
     if (!auth) return;
@@ -49,7 +56,6 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
-      // The redirect result is handled on the login page after the user returns.
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -57,6 +63,40 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth) return;
+    setIsEmailLoading(true);
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    } catch (error) {
+      let errorMessage = 'An unknown error occurred.';
+      if (error instanceof Error && (error as any).code) {
+        switch ((error as any).code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = 'Invalid email or password. Please try again.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          default:
+            errorMessage = 'Login failed. Please try again later.';
+        }
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: errorMessage,
+      });
+    } finally {
+      setIsEmailLoading(false);
     }
   };
 
@@ -71,10 +111,48 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <CardDescription>Sign in to manage your farms.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isEmailLoading}>
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
           Sign in with Google
         </Button>
+        <div className="flex items-center gap-4">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
+        </div>
+        <form onSubmit={handleEmailSignIn} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email-login">Email</Label>
+            <Input
+              id="email-login"
+              type="email"
+              placeholder="farmer@example.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isGoogleLoading || isEmailLoading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password-login">Password</Label>
+            <Input
+              id="password-login"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isGoogleLoading || isEmailLoading}
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full bg-primary hover:bg-primary/90"
+            disabled={isGoogleLoading || isEmailLoading}
+          >
+            {isEmailLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isEmailLoading ? 'Signing In...' : 'Sign In with Email'}
+          </Button>
+        </form>
       </CardContent>
       <CardFooter className="flex-col gap-4">
         <p className="text-xs text-muted-foreground">
@@ -87,5 +165,3 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     </Card>
   );
 }
-
-    
