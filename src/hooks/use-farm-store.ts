@@ -7,8 +7,41 @@ import { useToast } from './use-toast';
 import { useUser } from '@/firebase';
 import { GeoPoint } from 'firebase/firestore';
 
-// In-memory data store for farms
-let memoryFarms: Farm[] = [];
+// Sample in-memory data
+const sampleFarms: Farm[] = [
+    {
+        id: 'farm-1',
+        name: 'My Sample Farm',
+        ownerId: 'dev-user', // A generic ownerId for sample data
+        gateValves: [
+            { id: 'gv-1', name: 'Main Canal Valve', status: 'open', position: { lat: 11.13, lng: 78.66 } },
+            { id: 'gv-2', name: 'West Field Valve', status: 'closed', position: { lat: 11.128, lng: 78.65 } },
+            { id: 'gv-3', name: 'East Field Valve', status: 'closed', position: { lat: 11.129, lng: 78.67 } },
+        ],
+        mapImageUrl: '',
+        mapImageHint: 'satellite farm'
+    },
+    {
+        id: 'farm-2',
+        name: 'Sunrise Agriculture',
+        ownerId: 'dev-user',
+        gateValves: [
+            { id: 'gv-4', name: 'Reservoir Outlet', status: 'closed', position: { lat: 11.15, lng: 78.70 } },
+        ],
+        mapImageUrl: '',
+        mapImageHint: 'satellite farm'
+    }
+];
+
+// In-memory data store for farms, initialized with sample data
+let memoryFarms: Farm[] = [...sampleFarms.map(f => ({
+    ...f,
+    gateValves: f.gateValves.map(gv => ({
+        ...gv,
+        position: new GeoPoint((gv.position as any).lat, (gv.position as any).lng)
+    }))
+}))];
+
 
 export function useFarmStore() {
   const { user } = useUser();
@@ -19,11 +52,12 @@ export function useFarmStore() {
   const currentUserId = user?.uid;
 
   useEffect(() => {
-    // Simulate loading data for the current user
+    setIsLoading(true);
+    // When a user logs in, we'll assign them the sample data for this session.
+    // In a real app, you'd fetch this from a database.
     if (currentUserId) {
-      // On user change, filter the in-memory data.
-      // This simulates multi-user support locally.
-      setFarms(memoryFarms.filter(f => f.ownerId === currentUserId));
+      const userFarms = memoryFarms.map(farm => ({ ...farm, ownerId: currentUserId }));
+      setFarms(userFarms);
     } else {
       setFarms([]);
     }
@@ -31,9 +65,10 @@ export function useFarmStore() {
   }, [currentUserId]);
 
   const updateMemoryAndState = (newFarms: Farm[]) => {
-    memoryFarms = newFarms;
+    // This function now primarily updates the component's state, 
+    // as the `memoryFarms` is just for initial data.
     if (currentUserId) {
-        setFarms(memoryFarms.filter(f => f.ownerId === currentUserId));
+        setFarms(newFarms.filter(f => f.ownerId === currentUserId));
     }
   }
 
@@ -58,23 +93,24 @@ export function useFarmStore() {
         }))
       };
 
-      updateMemoryAndState([...memoryFarms, newFarm]);
+      setFarms(prevFarms => [...prevFarms, newFarm]);
+
     },
     [currentUserId, toast]
   );
 
   const deleteFarm = useCallback(
     async (farmId: string) => {
-      const farmToDelete = memoryFarms.find((f) => f.id === farmId);
-      if (farmToDelete) {
-        updateMemoryAndState(memoryFarms.filter((f) => f.id !== farmId));
-        toast({
-            title: 'Farm Deleted',
-            description: `Successfully deleted "${farmToDelete.name}".`,
-        });
-      }
+       const farmToDelete = farms.find((f) => f.id === farmId);
+       if(farmToDelete) {
+         setFarms(prevFarms => prevFarms.filter(f => f.id !== farmId));
+         toast({
+             title: 'Farm Deleted',
+             description: `Successfully deleted "${farmToDelete.name}".`,
+         });
+       }
     },
-    [toast]
+    [toast, farms]
   );
 
   const getFarmById = useCallback(
@@ -86,9 +122,9 @@ export function useFarmStore() {
 
   const toggleValveStatus = useCallback(
     async (farmId: string, valveId: string) => {
-      const newFarms = memoryFarms.map(farm => {
+      let toggledValveName = '';
+      const newFarms = farms.map(farm => {
         if (farm.id === farmId) {
-          let toggledValveName = '';
           const updatedValves = farm.gateValves.map(valve => {
             if (valve.id === valveId) {
               toggledValveName = valve.name;
@@ -96,20 +132,21 @@ export function useFarmStore() {
             }
             return valve;
           });
-          
-          if(toggledValveName) {
-            toast({
-              title: `Valve status changed`,
-              description: `Valve "${toggledValveName}" status updated.`,
-            });
-          }
           return { ...farm, gateValves: updatedValves };
         }
         return farm;
       });
-      updateMemoryAndState(newFarms);
+
+      if(toggledValveName) {
+        toast({
+          title: `Valve status changed`,
+          description: `Valve "${toggledValveName}" status updated.`,
+        });
+      }
+      
+      setFarms(newFarms);
     },
-    [toast]
+    [toast, farms]
   );
 
   return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
