@@ -1,0 +1,178 @@
+{
+  "entities": {
+    "Farm": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Farm",
+      "type": "object",
+      "description": "Represents a farm owned or managed by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Farm entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Farm)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the farm."
+        },
+        "location": {
+          "type": "string",
+          "description": "Geospatial coordinates or address of the farm (e.g., GeoJSON)."
+        },
+        "gateValveIds": {
+          "type": "array",
+          "description": "References to GateValves. (Relationship: Farm 1:N GateValve)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "location"
+      ]
+    },
+    "GateValve": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GateValve",
+      "type": "object",
+      "description": "Represents a gate valve within a farm.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GateValve entity."
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to Farm. (Relationship: Farm 1:N GateValve)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the gate valve."
+        },
+        "location": {
+          "type": "string",
+          "description": "Geospatial coordinates of the gate valve (e.g., GeoJSON)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the gate valve (e.g., open, closed, error)."
+        }
+      },
+      "required": [
+        "id",
+        "farmId",
+        "name",
+        "location",
+        "status"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile data.  Path-based ownership ensures only the user can access their profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/farms/{farmId}",
+        "definition": {
+          "entityName": "Farm",
+          "schema": {
+            "$ref": "#/backend/entities/Farm"
+          },
+          "description": "Stores farm data. Path-based ownership ensures only the user can access their farms.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "farmId",
+              "description": "The unique identifier of the farm."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/farms/{farmId}/gateValves/{gateValveId}",
+        "definition": {
+          "entityName": "GateValve",
+          "schema": {
+            "$ref": "#/backend/entities/GateValve"
+          },
+          "description": "Stores gate valve data. Path-based ownership (user -> farm -> gateValve) ensures only the user can access the gate valve data within their farms.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "farmId",
+              "description": "The unique identifier of the farm."
+            },
+            {
+              "name": "gateValveId",
+              "description": "The unique identifier of the gate valve."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure secure and scalable management of farm and gate valve data, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure leverages path-based ownership for user-specific data and avoids hierarchical authorization dependencies by denormalizing the `userId` into the `farms` and `gateValves` collections, making security rules simpler and more robust.\n\nThe `users/{userId}` collection stores user profiles. Each user owns their `farms` and `gateValves` through path-based ownership. The `farms/{farmId}` collection stores farm-specific data. Similarly, `farms/{farmId}/gateValves/{gateValveId}` stores gate valve data, ensuring a clear hierarchy. This structure supports QAPs because listing farms and gate valves is secured by path-based rules that check `request.auth.uid` against the `userId` or `farmId`.\n\nThe denormalization of `userId` (implicit in path structure) into all gate valve document enables authorization independence. Rules can validate ownership solely based on the path and the authenticated user's ID without needing `get()` calls to parent documents."
+  }
+}
