@@ -53,7 +53,7 @@ service cloud.firestore {
      * Denies requests that target non-existent documents.
      */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/farms/$(resource.id));
     }
 
     /**
@@ -86,9 +86,11 @@ service cloud.firestore {
      * Prevents ownership and ID fields from being changed.
      */
     function hasImmutableFarmFields() {
-      let data = request.resource.data;
-      return data.ownerId == resource.data.ownerId
-          && data.id == resource.data.id;
+      let incomingData = request.resource.data;
+      let existingData = resource.data;
+      // Allow updates to all fields except ownerId and id.
+      return incomingData.ownerId == existingData.ownerId
+          && incomingData.id == existingData.id;
     }
 
     /**
@@ -128,8 +130,8 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId) && isValidNewUser(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableUserFields();
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && hasImmutableUserFields();
+      allow delete: if isOwner(userId);
     }
 
     /**
@@ -144,8 +146,8 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && isValidNewFarm(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableFarmFields();
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && hasImmutableFarmFields();
+      allow delete: if isOwner(userId);
     }
 
     /**
@@ -160,8 +162,8 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && isValidNewGateValve(farmId, gateValveId);
-      allow update: if isExistingOwner(userId) && hasImmutableGateValveFields();
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && hasImmutableGateValveFields();
+      allow delete: if isOwner(userId);
     }
   }
 }
