@@ -31,6 +31,9 @@ export default function MapPicker({
   const [valves, setValves] = useState(initialValves);
   const [selectedValveIndex, setSelectedValveIndex] = useState<number | null>(null);
   const { toast } = useToast();
+  
+  const [mapCenter, setMapCenter] = useState(initialCenter);
+  const [zoomLevel, setZoomLevel] = useState(10);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || "fallback-key-for-dev",
@@ -125,8 +128,10 @@ export default function MapPicker({
     <div className="w-full h-full rounded-lg overflow-hidden border relative">
       <GoogleMap
         mapContainerClassName="w-full h-full"
-        center={initialCenter}
-        zoom={10}
+        center={mapCenter}
+        zoom={zoomLevel}
+        onCenterChanged={() => {}} // Placeholder to attach map instance
+        onZoomChanged={() => {}} // Placeholder to attach map instance
         options={mapOptions}
         onClick={handleMapClick}
       >
