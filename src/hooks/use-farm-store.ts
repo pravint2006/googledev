@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { type Farm, type GateValve } from '@/lib/data';
 import { useToast } from './use-toast';
 import {
@@ -22,6 +22,7 @@ export function useFarmStore() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const farmsCollection = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -55,24 +56,46 @@ export function useFarmStore() {
       return;
     }
     if (!farmsCollection) return;
-
+    
+    setIsSubmitting(true);
+    try {
      await addDoc(farmsCollection, {
       ...farmData,
       ownerId: user.uid,
-    });
+     });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error Saving Farm",
+            description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const deleteFarm = async (farmId: string) => {
     if (!user || !firestore) return;
-
-    const farmToDelete = farms?.find((f) => f.id === farmId);
-    if (farmToDelete) {
-      const docRef = doc(firestore, 'users', user.uid, 'farms', farmId);
-      await deleteDoc(docRef);
-      toast({
-        title: 'Farm Deleted',
-        description: `Successfully deleted "${farmToDelete.name}".`,
-      });
+    
+    setIsSubmitting(true);
+    try {
+        const farmToDelete = farms?.find((f) => f.id === farmId);
+        if (farmToDelete) {
+          const docRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+          await deleteDoc(docRef);
+          toast({
+            title: 'Farm Deleted',
+            description: `Successfully deleted "${farmToDelete.name}".`,
+          });
+        }
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error Deleting Farm",
+            description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -101,27 +124,37 @@ export function useFarmStore() {
       return;
     }
 
+    setIsSubmitting(true);
+    try {
+        let toggledValveName = '';
+        const updatedValves = farm.gateValves.map((valve) => {
+          if (valve.id === valveId) {
+            toggledValveName = valve.name;
+            return {
+              ...valve,
+              status: valve.status === 'open' ? 'closed' : 'open',
+            };
+          }
+          return valve;
+        });
 
-    let toggledValveName = '';
-    const updatedValves = farm.gateValves.map((valve) => {
-      if (valve.id === valveId) {
-        toggledValveName = valve.name;
-        return {
-          ...valve,
-          status: valve.status === 'open' ? 'closed' : 'open',
-        };
-      }
-      return valve;
-    });
+        const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+        await updateDoc(farmRef, { gateValves: updatedValves });
 
-    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
-    await updateDoc(farmRef, { gateValves: updatedValves });
-
-    if (toggledValveName) {
-      toast({
-        title: `Valve status changed`,
-        description: `Valve "${toggledValveName}" status updated.`,
-      });
+        if (toggledValveName) {
+          toast({
+            title: `Valve status changed`,
+            description: `Valve "${toggledValveName}" status updated.`,
+          });
+        }
+    } catch(error) {
+         toast({
+            variant: "destructive",
+            title: "Error Updating Valve",
+            description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
   
@@ -130,7 +163,7 @@ export function useFarmStore() {
   return {
     farms: farms || [],
     isLoading,
-    isSubmitting: false, 
+    isSubmitting, 
     addFarm,
     deleteFarm,
     getFarmById,
