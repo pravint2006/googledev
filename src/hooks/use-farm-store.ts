@@ -1,148 +1,133 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { type Farm, type GateValve } from '@/lib/data';
 import { useToast } from './use-toast';
-import { useUser } from '@/firebase';
-import { GeoPoint } from 'firebase/firestore';
-
-// Sample in-memory data
-const sampleFarms: Farm[] = [
-    {
-        id: 'farm-1',
-        name: 'My Sample Farm',
-        ownerId: 'dev-user', // A generic ownerId for sample data
-        gateValves: [
-            { id: 'gv-1', name: 'Main Canal Valve', status: 'open', position: { lat: 11.13, lng: 78.66 } },
-            { id: 'gv-2', name: 'West Field Valve', status: 'closed', position: { lat: 11.128, lng: 78.65 } },
-            { id: 'gv-3', name: 'East Field Valve', status: 'closed', position: { lat: 11.129, lng: 78.67 } },
-        ],
-        mapImageUrl: '',
-        mapImageHint: 'satellite farm'
-    },
-    {
-        id: 'farm-2',
-        name: 'Sunrise Agriculture',
-        ownerId: 'dev-user',
-        gateValves: [
-            { id: 'gv-4', name: 'Reservoir Outlet', status: 'closed', position: { lat: 11.15, lng: 78.70 } },
-        ],
-        mapImageUrl: '',
-        mapImageHint: 'satellite farm'
-    }
-];
-
-// In-memory data store for farms, initialized with sample data
-let memoryFarms: Farm[] = [...sampleFarms.map(f => ({
-    ...f,
-    gateValves: f.gateValves.map(gv => ({
-        ...gv,
-        position: new GeoPoint((gv.position as any).lat, (gv.position as any).lng)
-    }))
-}))];
-
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import {
+  GeoPoint,
+  collection,
+  doc,
+  deleteDoc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { type WithId } from '@/firebase/firestore/use-collection';
 
 export function useFarmStore() {
   const { user, loading: userLoading } = useUser();
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
   const { toast } = useToast();
-  
-  const currentUserId = user?.uid;
+
+  const farmsCollection = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'farms');
+  }, [user, firestore]);
+
+  const {
+    data: farms,
+    isLoading: farmsLoading,
+    error: farmsError,
+  } = useCollection<Farm>(farmsCollection);
 
   useEffect(() => {
-    // Only proceed when user loading is finished.
-    if (!userLoading) {
-      setIsLoading(true);
-      // When a user logs in, we'll assign them the sample data for this session.
-      // In a real app, you'd fetch this from a database.
-      if (currentUserId) {
-        const userFarms = memoryFarms.map(farm => ({ ...farm, ownerId: currentUserId }));
-        setFarms(userFarms);
-      } else {
-        setFarms([]);
-      }
-      setIsLoading(false);
-    }
-  }, [currentUserId, userLoading]);
-
-  const addFarm = useCallback(
-    async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
-      if (!currentUserId) {
-        toast({
-          variant: 'destructive',
-          title: 'Authentication Error',
-          description: 'You must be logged in to add a farm.',
-        });
-        return;
-      }
-      
-      const newFarm: Farm = {
-        id: `farm-${Date.now()}`,
-        ownerId: currentUserId,
-        ...farmData,
-        gateValves: farmData.gateValves.map(v => ({
-            ...v,
-            position: new GeoPoint((v.position as any).lat, (v.position as any).lng)
-        }))
-      };
-
-      setFarms(prevFarms => [...prevFarms, newFarm]);
-
-    },
-    [currentUserId, toast]
-  );
-
-  const deleteFarm = useCallback(
-    async (farmId: string) => {
-       const farmToDelete = farms.find((f) => f.id === farmId);
-       if(farmToDelete) {
-         setFarms(prevFarms => prevFarms.filter(f => f.id !== farmId));
-         toast({
-             title: 'Farm Deleted',
-             description: `Successfully deleted "${farmToDelete.name}".`,
-         });
-       }
-    },
-    [toast, farms]
-  );
-
-  const getFarmById = useCallback(
-    (id: string) => {
-      return farms.find((farm) => farm.id === id);
-    },
-    [farms]
-  );
-
-  const toggleValveStatus = useCallback(
-    async (farmId: string, valveId: string) => {
-      let toggledValveName = '';
-      const newFarms = farms.map(farm => {
-        if (farm.id === farmId) {
-          const updatedValves = farm.gateValves.map(valve => {
-            if (valve.id === valveId) {
-              toggledValveName = valve.name;
-              return { ...valve, status: valve.status === 'open' ? 'closed' : 'open' } as GateValve;
-            }
-            return valve;
-          });
-          return { ...farm, gateValves: updatedValves };
-        }
-        return farm;
+    if (farmsError) {
+      toast({
+        variant: 'destructive',
+        title: 'Error fetching farms',
+        description:
+          farmsError.message || 'Could not load farm data from the database.',
       });
+    }
+  }, [farmsError, toast]);
 
-      if(toggledValveName) {
-        toast({
-          title: `Valve status changed`,
-          description: `Valve "${toggledValveName}" status updated.`,
-        });
+  const addFarm = async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
+    if (!user || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to add a farm.',
+      });
+      return;
+    }
+    if (!farmsCollection) return;
+
+    // The useCollection hook will automatically update the local state
+    // when this document is added to the database.
+    await addDocumentNonBlocking(farmsCollection, {
+      ...farmData,
+      ownerId: user.uid,
+      gateValves: farmData.gateValves.map((v) => ({
+        ...v,
+        position: new GeoPoint(
+          (v.position as any).lat,
+          (v.position as any).lng
+        ),
+      })),
+    });
+  };
+
+  const deleteFarm = async (farmId: string) => {
+    if (!user || !firestore) return;
+
+    const farmToDelete = farms?.find((f) => f.id === farmId);
+    if (farmToDelete) {
+      const docRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+      await deleteDoc(docRef);
+      toast({
+        title: 'Farm Deleted',
+        description: `Successfully deleted "${farmToDelete.name}".`,
+      });
+    }
+  };
+
+  const getFarmById = (id: string): WithId<Farm> | undefined => {
+    return farms?.find((farm) => farm.id === id);
+  };
+
+  const toggleValveStatus = async (farmId: string, valveId: string) => {
+    if (!user || !firestore) return;
+
+    const farm = farms?.find((f) => f.id === farmId);
+    if (!farm) return;
+
+    let toggledValveName = '';
+    const updatedValves = farm.gateValves.map((valve) => {
+      if (valve.id === valveId) {
+        toggledValveName = valve.name;
+        return {
+          ...valve,
+          status: valve.status === 'open' ? 'closed' : 'open',
+        };
       }
-      
-      setFarms(newFarms);
-    },
-    [toast, farms]
-  );
+      return valve;
+    });
 
-  return { farms, isLoading, addFarm, deleteFarm, getFarmById, toggleValveStatus };
+    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+    await updateDoc(farmRef, { gateValves: updatedValves });
+
+    if (toggledValveName) {
+      toast({
+        title: `Valve status changed`,
+        description: `Valve "${toggledValveName}" status updated.`,
+      });
+    }
+  };
+  
+  const isLoading = userLoading || farmsLoading;
+
+  return {
+    farms: farms || [],
+    isLoading,
+    addFarm,
+    deleteFarm,
+    getFarmById,
+    toggleValveStatus,
+  };
 }
