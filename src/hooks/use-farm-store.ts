@@ -15,6 +15,7 @@ import {
   deleteDoc,
   updateDoc,
   addDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { type WithId } from '@/firebase/firestore/use-collection';
 
@@ -63,8 +64,9 @@ export function useFarmStore() {
         ...farmData,
         ownerId: user.uid,
      });
-     // Set the ID on the newly created document
-     await updateDoc(docRef, { id: docRef.id });
+     // Use setDoc with merge to add the ID to the new document
+     // This avoids security rule violations that updateDoc might cause
+     await setDoc(docRef, { id: docRef.id }, { merge: true });
     } catch (error) {
         toast({
             variant: "destructive",
@@ -117,7 +119,7 @@ export function useFarmStore() {
     if (!targetValve) return;
 
     // Prevent closing the last open valve
-    if (openValvesCount === 1 && targetValve.status === 'open') {
+    if (openValvesCount <= 1 && targetValve.status === 'open') {
       toast({
         variant: 'destructive',
         title: 'Action Prevented',
