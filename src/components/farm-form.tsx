@@ -25,6 +25,7 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from './ui/progress';
 import { GeoPoint } from 'firebase/firestore';
+import MapPicker from './map-picker';
 
 const formSchema = z.object({
   farmName: z.string().min(3, 'Farm name must be at least 3 characters.'),
@@ -106,7 +107,7 @@ export default function FarmForm() {
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : 'Click on the map to pinpoint your farm\'s location.'}
+                : 'Click on the map to pinpoint your farm\\'s location.'}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
@@ -148,7 +149,10 @@ export default function FarmForm() {
                 {step === 2 && (
                     <>
                         <CardContent>
-                            <p className='text-sm text-muted-foreground mb-4'>Step 2: Please place the pin on the map below.</p>
+                             <p className='text-sm text-muted-foreground mb-4'>Step 2: Please place the pin on the map below.</p>
+                            <div className="w-full h-96">
+                                <MapPicker onLocationSelect={(geoPoint) => setFarmLocation(geoPoint)} />
+                            </div>
                         </CardContent>
                         <CardFooter className="justify-between">
                             <Button variant="outline" onClick={handleBack} disabled={isStoreSubmitting}>

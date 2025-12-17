@@ -1,4 +1,6 @@
 
+import { GeoPoint } from 'firebase/firestore';
+
 export type GateValve = {
   id: string;
   name: string;
@@ -13,4 +15,5 @@ export type Farm = {
   mapImageUrl: string;
   mapImageHint: string;
   ownerId: string;
+  location: GeoPoint;
 };
