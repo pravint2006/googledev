@@ -10,7 +10,7 @@
           "type": "string",
           "description": "Unique identifier for the Farm entity."
         },
-        "userId": {
+        "ownerId": {
           "type": "string",
           "description": "Reference to User. (Relationship: User 1:N Farm)"
         },
@@ -32,7 +32,7 @@
       },
       "required": [
         "id",
-        "userId",
+        "ownerId",
         "name",
         "location"
       ]

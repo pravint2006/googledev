@@ -12,6 +12,7 @@ import {
   Menu,
   Loader2,
   UserCircle,
+  Cpu,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
@@ -38,6 +39,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/farms', label: 'Farms', icon: Tractor },
   { href: '/farms/new', label: 'Add Farm', icon: PlusCircle },
+  { href: '/hardware', label: 'Hardware', icon: Cpu },
 ];
 
 export default function Header() {
