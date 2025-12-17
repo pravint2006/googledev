@@ -10,12 +10,10 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import {
-  GeoPoint,
   collection,
   doc,
   deleteDoc,
   updateDoc,
-  writeBatch,
 } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { type WithId } from '@/firebase/firestore/use-collection';
@@ -63,13 +61,6 @@ export function useFarmStore() {
     await addDocumentNonBlocking(farmsCollection, {
       ...farmData,
       ownerId: user.uid,
-      gateValves: farmData.gateValves.map((v) => ({
-        ...v,
-        position: new GeoPoint(
-          (v.position as any).lat,
-          (v.position as any).lng
-        ),
-      })),
     });
   };
 

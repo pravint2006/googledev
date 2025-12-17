@@ -4,10 +4,10 @@ import { useFarmStore } from '@/hooks/use-farm-store';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GateValveStatus from '@/components/gate-valve-status';
-import MapPicker from '@/components/map-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Tractor, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
@@ -76,11 +76,18 @@ export default function FarmDetailPage() {
                 <CardTitle className='font-headline'>Farm Layout</CardTitle>
               </CardHeader>
               <CardContent>
-                <MapPicker
-                  isEditable={false}
-                  valves={farm.gateValves}
-                  mapTypeId='satellite'
-                />
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
+                    <Image
+                        src={farm.mapImageUrl}
+                        alt={`Map of ${farm.name}`}
+                        fill
+                        className="object-cover"
+                        data-ai-hint={farm.mapImageHint}
+                    />
+                     <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                        <p className="text-foreground text-center p-4 bg-background/80 rounded-lg">Interactive map is temporarily disabled.</p>
+                    </div>
+                </div>
               </CardContent>
             </Card>
           </div>

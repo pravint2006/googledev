@@ -7,6 +7,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,10 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFarmStore } from '@/hooks/use-farm-store';
 import { type GateValve } from '@/lib/data';
-import MapPicker from './map-picker';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from './ui/progress';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const formSchema = z.object({
   farmName: z.string().min(3, 'Farm name must be at least 3 characters.'),
@@ -33,8 +34,6 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const tamilNaduCenter = { lat: 11.1271, lng: 78.6569 };
-
 export default function FarmForm() {
   const [step, setStep] = useState(1);
   const [valves, setValves] = useState<GateValve[]>([]);
@@ -42,6 +41,8 @@ export default function FarmForm() {
   const { addFarm } = useFarmStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const mapImage = PlaceHolderImages.find(p => p.id === 'farm-map-new');
+
 
   const { control, handleSubmit, watch, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -55,6 +56,14 @@ export default function FarmForm() {
   const watchedValues = watch();
 
   const onFirstStepSubmit = () => {
+    // Create dummy valves since map is disabled
+    const newValves = Array.from({ length: watchedValues.valveCount }, (_, i) => ({
+      id: `valve-${i + 1}`,
+      name: `Valve ${i + 1}`,
+      status: 'closed' as const,
+      position: { lat: 0, lng: 0 },
+    }));
+    setValves(newValves);
     setStep(2);
   };
 
@@ -63,23 +72,14 @@ export default function FarmForm() {
   };
 
   const handleFinalSubmit = async () => {
-    if (isSaveDisabled) {
-      toast({
-        variant: 'destructive',
-        title: 'Valve Placement Incomplete',
-        description: `Please place all ${watchedValues.valveCount} valves on the map.`,
-      });
-      return;
-    }
-    
     setIsSubmitting(true);
     
     try {
       await addFarm({
         name: watchedValues.farmName,
         gateValves: valves,
-        mapImageUrl: '',
-        mapImageHint: 'satellite farm',
+        mapImageUrl: mapImage?.imageUrl || '',
+        mapImageHint: mapImage?.imageHint || 'satellite farm',
       });
       
       toast({
@@ -95,22 +95,18 @@ export default function FarmForm() {
   };
 
   const progressValue = (step / 2) * 100;
-
-  const handleSetValves = useCallback((newValves: GateValve[]) => {
-    setValves(newValves);
-  }, []);
   
-  const isSaveDisabled = isSubmitting || valves.length < watchedValues.valveCount;
+  const isSaveDisabled = isSubmitting;
 
   return (
     <Card>
       <CardHeader>
         <Progress value={progressValue} className="mb-4 h-2" />
-        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Place Valves'}</CardTitle>
+        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Confirm Farm'}</CardTitle>
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : `Click on the map to place your ${watchedValues.valveCount} gate valves.`}
+                : `A map will be shown here once API issues are resolved. Press Save to continue.`}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
@@ -152,14 +148,20 @@ export default function FarmForm() {
                 {step === 2 && (
                     <>
                         <CardContent>
-                            <MapPicker 
-                                isEditable={true} 
-                                valves={valves} 
-                                setValves={handleSetValves} 
-                                valveCount={watchedValues.valveCount}
-                                mapTypeId="satellite"
-                                center={tamilNaduCenter}
-                            />
+                            <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
+                                {mapImage && (
+                                <Image
+                                    src={mapImage.imageUrl}
+                                    alt={mapImage.description}
+                                    fill
+                                    className="object-cover"
+                                    data-ai-hint={mapImage.imageHint}
+                                />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                                <p className="text-foreground text-center p-4 bg-background/80 rounded-lg">Interactive map is temporarily disabled.</p>
+                                </div>
+                            </div>
                         </CardContent>
                         <CardFooter className="justify-between">
                             <Button variant="outline" onClick={handleBack} disabled={isSubmitting}>
