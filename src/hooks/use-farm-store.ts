@@ -59,10 +59,12 @@ export function useFarmStore() {
     
     setIsSubmitting(true);
     try {
-     await addDoc(farmsCollection, {
-      ...farmData,
-      ownerId: user.uid,
+     const docRef = await addDoc(farmsCollection, {
+        ...farmData,
+        ownerId: user.uid,
      });
+     // Set the ID on the newly created document
+     await updateDoc(docRef, { id: docRef.id });
     } catch (error) {
         toast({
             variant: "destructive",

@@ -78,7 +78,7 @@ service cloud.firestore {
      */
     function isValidNewFarm(userId) {
       let data = request.resource.data;
-      return data.ownerId == userId;
+      return data.ownerId == userId && data.id == request.resource.id;
     }
 
     /**
