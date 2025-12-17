@@ -36,13 +36,13 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function FarmForm() {
   const [step, setStep] = useState(1);
-  const [valves, setValves] = useState<GateValve[]>([]);
+  const [valves, setValves] = useState<Omit<GateValve, 'id' | 'status'>[]>([]);
   const router = useRouter();
   const { addFarm, isSubmitting: isStoreSubmitting } = useFarmStore();
   const { toast } = useToast();
   const [farmLocation, setFarmLocation] = useState<GeoPoint | null>(null);
 
-  const { control, handleSubmit, watch, formState: { errors, isValid } } = useForm<FormData>({
+  const { control, handleSubmit, watch, getValues, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       farmName: '',
@@ -54,35 +54,45 @@ export default function FarmForm() {
   const watchedValues = watch();
 
   const onFirstStepSubmit = () => {
-    // Create dummy valves since map is disabled
-    const newValves = Array.from({ length: watchedValues.valveCount }, (_, i) => ({
-      id: `valve-${i + 1}`,
+    const newValveCount = getValues('valveCount');
+    const initialValves = Array.from({ length: newValveCount }, (_, i) => ({
       name: `Valve ${i + 1}`,
-      status: 'closed' as const,
       position: { lat: 0, lng: 0 },
     }));
-    setValves(newValves);
+    setValves(initialValves);
     setStep(2);
   };
 
   const handleBack = () => {
     setStep(1);
   };
-
-  const handleFinalSubmit = async () => {
-    if (!farmLocation) {
+  
+  const handleFinalSubmit = async (finalValves: Omit<GateValve, 'id' | 'status'>[]) => {
+    const completeValves = finalValves.map((valve, index) => ({
+      ...valve,
+      id: `valve-${Date.now()}-${index}`,
+      status: 'closed' as const,
+    }));
+    
+    // Find the average of all valve positions to set a "center" for the farm
+     if (completeValves.length === 0) {
         toast({
             variant: "destructive",
-            title: "Location not set",
-            description: "Please click on the map to set your farm's location.",
+            title: "No Valves Placed",
+            description: "Please place at least one valve on the map.",
         });
         return;
     }
+    
+    const avgLat = completeValves.reduce((sum, v) => sum + v.position.lat, 0) / completeValves.length;
+    const avgLng = completeValves.reduce((sum, v) => sum + v.position.lng, 0) / completeValves.length;
+    const centerLocation = new GeoPoint(avgLat, avgLng);
+    setFarmLocation(centerLocation);
 
     const newFarmData: Omit<Farm, 'id'> = {
         name: watchedValues.farmName,
-        location: farmLocation,
-        gateValves: valves,
+        location: centerLocation,
+        gateValves: completeValves,
     };
     
     await addFarm(newFarmData);
@@ -97,17 +107,17 @@ export default function FarmForm() {
 
   const progressValue = (step / 2) * 100;
   
-  const isSaveDisabled = isStoreSubmitting || !farmLocation;
+  const isSaveDisabled = isStoreSubmitting;
 
   return (
     <Card>
       <CardHeader>
         <Progress value={progressValue} className="mb-4 h-2" />
-        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Set Location'}</CardTitle>
+        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Place Valves'}</CardTitle>
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : "Click on the map to pinpoint your farm's location."}
+                : 'Click on the map to place your gate valves.'}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
@@ -149,9 +159,13 @@ export default function FarmForm() {
                 {step === 2 && (
                     <>
                         <CardContent>
-                             <p className='text-sm text-muted-foreground mb-4'>Step 2: Please place the pin on the map below.</p>
-                            <div className="w-full h-96">
-                                <MapPicker onLocationSelect={(geoPoint) => setFarmLocation(geoPoint)} />
+                            <div className="w-full h-96 md:h-[60vh]">
+                                <MapPicker 
+                                  valves={valves} 
+                                  onFinalSubmit={handleFinalSubmit} 
+                                  isSubmitting={isStoreSubmitting}
+                                  totalValves={getValues('valveCount')}
+                                />
                             </div>
                         </CardContent>
                         <CardFooter className="justify-between">
@@ -159,10 +173,7 @@ export default function FarmForm() {
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                             </Button>
-                            <Button onClick={handleFinalSubmit} disabled={isSaveDisabled}>
-                                {isStoreSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                {isStoreSubmitting ? 'Saving...' : 'Save Farm'}
-                            </Button>
+                             {/* The Save button is now inside the MapPicker component */}
                         </CardFooter>
                     </>
                 )}

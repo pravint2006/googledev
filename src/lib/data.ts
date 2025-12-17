@@ -12,8 +12,7 @@ export type Farm = {
   id: string;
   name: string;
   gateValves: GateValve[];
-  mapImageUrl: string;
-  mapImageHint: string;
+  // mapImageUrl and mapImageHint are no longer needed with an interactive map
   ownerId: string;
   location: GeoPoint;
 };

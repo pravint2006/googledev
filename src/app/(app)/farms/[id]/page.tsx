@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFarmStore } from '@/hooks/use-farm-store';
@@ -7,11 +8,11 @@ import GateValveStatus from '@/components/gate-valve-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Tractor, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
 import DeleteFarmDialog from '@/components/delete-farm-dialog';
+import FarmMap from '@/components/farm-map';
 
 export default function FarmDetailPage() {
   const params = useParams();
@@ -23,7 +24,7 @@ export default function FarmDetailPage() {
 
   const handleDelete = () => {
     deleteFarm(id);
-    router.push('/farms');
+    router.push('/dashboard');
   };
 
   if (isLoading) {
@@ -77,16 +78,7 @@ export default function FarmDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
-                    <Image
-                        src={farm.mapImageUrl}
-                        alt={`Map of ${farm.name}`}
-                        fill
-                        className="object-cover"
-                        data-ai-hint={farm.mapImageHint}
-                    />
-                     <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                        <p className="text-foreground text-center p-4 bg-background/80 rounded-lg">Interactive map is temporarily disabled.</p>
-                    </div>
+                    <FarmMap valves={farm.gateValves} center={farm.location} />
                 </div>
               </CardContent>
             </Card>
