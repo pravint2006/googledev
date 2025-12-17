@@ -14,8 +14,8 @@ import {
   doc,
   deleteDoc,
   updateDoc,
+  addDoc,
 } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { type WithId } from '@/firebase/firestore/use-collection';
 
 export function useFarmStore() {
@@ -58,7 +58,7 @@ export function useFarmStore() {
 
     // The useCollection hook will automatically update the local state
     // when this document is added to the database.
-    await addDocumentNonBlocking(farmsCollection, {
+     await addDoc(farmsCollection, {
       ...farmData,
       ownerId: user.uid,
     });
@@ -116,6 +116,7 @@ export function useFarmStore() {
   return {
     farms: farms || [],
     isLoading,
+    isSubmitting: false, // Placeholder for isSubmitting state
     addFarm,
     deleteFarm,
     getFarmById,

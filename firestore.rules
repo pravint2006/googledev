@@ -22,7 +22,7 @@
  * - No Cross-User Access: There are no rules that permit one user to view or
  *   modify another user's data.
  * - Relational Integrity: On document creation, rules validate that internal ID
- *   fields (e.g., `userId`, `farmId`) match the IDs in the document path, ensuring
+ *   fields (e.g., `ownerId`, `farmId`) match the IDs in the document path, ensuring
  *   data consistency. These fields are enforced as immutable on update.
  */
 rules_version = '2';
@@ -74,12 +74,11 @@ service cloud.firestore {
 
     /**
      * Validates the integrity of a Farm document on creation.
-     * Ensures the document's internal IDs match the document path IDs.
+     * Ensures the document's internal ownerId matches the user path ID.
      */
-    function isValidNewFarm(userId, farmId) {
+    function isValidNewFarm(userId) {
       let data = request.resource.data;
-      return data.userId == userId
-          && data.id == farmId;
+      return data.ownerId == userId;
     }
 
     /**
@@ -88,7 +87,7 @@ service cloud.firestore {
      */
     function hasImmutableFarmFields() {
       let data = request.resource.data;
-      return data.userId == resource.data.userId
+      return data.ownerId == resource.data.ownerId
           && data.id == resource.data.id;
     }
 
@@ -138,13 +137,13 @@ service cloud.firestore {
      * @path /users/{userId}/farms/{farmId}
      * @allow (create) A user creates a new farm under their own profile: `create /users/user_abc/farms/farm_123` with auth.uid=`user_abc`.
      * @deny (get) A user tries to read another user's farm data: `get /users/user_xyz/farms/farm_456` with auth.uid=`user_abc`.
-     * @deny (create) A user creates a farm with an incorrect internal userId: `create /users/user_abc/farms/farm_123` with data `{ userId: 'user_xyz' }`.
+     * @deny (create) A user creates a farm with an incorrect internal ownerId: `create /users/user_abc/farms/farm_123` with data `{ ownerId: 'user_xyz' }`.
      * @principle Restricts access to a user's own data tree using path-based ownership.
      */
     match /users/{userId}/farms/{farmId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidNewFarm(userId, farmId);
+      allow create: if isOwner(userId) && isValidNewFarm(userId);
       allow update: if isExistingOwner(userId) && hasImmutableFarmFields();
       allow delete: if isExistingOwner(userId);
     }
