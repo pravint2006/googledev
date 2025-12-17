@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -14,7 +15,6 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  addDoc,
   setDoc,
 } from 'firebase/firestore';
 import { type WithId } from '@/firebase/firestore/use-collection';
@@ -60,13 +60,16 @@ export function useFarmStore() {
     
     setIsSubmitting(true);
     try {
-     const docRef = await addDoc(farmsCollection, {
+      // 1. Generate a new document reference with a unique ID
+      const newFarmRef = doc(farmsCollection);
+      
+      // 2. Use setDoc to create the document with the ID included from the start
+      await setDoc(newFarmRef, {
         ...farmData,
+        id: newFarmRef.id, // Add the auto-generated ID to the document data
         ownerId: user.uid,
-     });
-     // Use setDoc with merge to add the ID to the new document
-     // This avoids security rule violations that updateDoc might cause
-     await setDoc(docRef, { id: docRef.id }, { merge: true });
+      });
+
     } catch (error) {
         toast({
             variant: "destructive",
