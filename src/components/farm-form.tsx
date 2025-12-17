@@ -107,7 +107,7 @@ export default function FarmForm() {
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : 'Click on the map to pinpoint your farm\\'s location.'}
+                : "Click on the map to pinpoint your farm's location."}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
