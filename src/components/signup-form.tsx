@@ -16,37 +16,12 @@ import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from './ui/separator';
-
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void;
-}
-
-function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 48 48" width="1em" height="1em" {...props}>
-      <path
-        fill="#FFC107"
-        d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 8.841C34.553 5.107 29.61 3 24 3C12.955 3 4 11.955 4 23s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
-      />
-      <path
-        fill="#FF3D00"
-        d="M6.306 14.691c-1.645 3.119-2.659 6.694-2.659 10.309s1.014 7.19 2.659 10.309l7.707-6.012C12.978 26.861 12 25.013 12 23s.978-3.861 2.013-5.286l-7.707-6.012z"
-      />
-      <path
-        fill="#4CAF50"
-        d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238c-2.008 1.32-4.491 2.12-7.219 2.12c-5.216 0-9.618-3.356-11.226-7.96l-7.707 6.012C9.253 38.046 15.97 44 24 44z"
-      />
-      <path
-        fill="#1976D2"
-        d="M43.611 20.083L43.594 20H24v8h11.303a12.031 12.031 0 0 1-4.223 5.586l7.219 5.238C42.062 34.522 44 29.174 44 23c0-1.341-.138-2.65-.389-3.917z"
-      />
-    </svg>
-  );
 }
 
 export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
@@ -54,7 +29,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -105,7 +79,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             errorMessage = 'The password is too weak. Please use a stronger one.';
             break;
           case 'auth/operation-not-allowed':
-             errorMessage = 'Email/Password sign up is not enabled. Please use Google Sign-In.';
+             errorMessage = 'Email/Password sign up is not enabled.';
              break;
           default:
             errorMessage = 'Failed to sign up. Please try again later.';
@@ -122,23 +96,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithRedirect(auth, provider);
-      // The redirect result is handled on the login page after the user returns.
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
-      });
-      setIsGoogleLoading(false);
-    }
-  };
-
   return (
     <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
       <CardHeader className="text-center">
@@ -151,15 +108,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-         <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
-            {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
-            Sign up with Google
-        </Button>
-        <div className="flex items-center gap-4">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <Separator className="flex-1" />
-        </div>
         <form onSubmit={handleSignUp} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="displayName">Full Name</Label>
@@ -170,7 +118,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -182,7 +130,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -193,16 +141,16 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading}
             />
           </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90"
-            disabled={isLoading || isGoogleLoading}
+            disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Creating Account...' : 'Sign Up with Email'}
+            {isLoading ? 'Creating Account...' : 'Sign Up'}
           </Button>
         </form>
       </CardContent>

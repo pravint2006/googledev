@@ -7,45 +7,23 @@ import { LoginForm } from '@/components/login-form';
 import { SignUpForm } from '@/components/signup-form';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getRedirectResult } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const bgImage = PlaceHolderImages.find((p) => p.id === 'login-background');
   const [isLoginView, setIsLoginView] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const auth = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
 
   useEffect(() => {
-    if (auth) {
-      getRedirectResult(auth)
-        .then((result) => {
-          if (result) {
-            // User successfully signed in with Google.
-            router.push('/dashboard');
-          }
-          setIsLoading(false);
-        })
-        .catch((error) => {
-          // Handle Errors here.
-          toast({
-            variant: 'destructive',
-            title: 'Google Sign-In Failed',
-            description: error.message,
-          });
-          setIsLoading(false);
-        });
-    } else {
-        setIsLoading(false);
+    if (!loading && user) {
+      router.push('/dashboard');
     }
-  }, [auth, router, toast]);
-
-  if (isLoading) {
+  }, [user, loading, router]);
+  
+  if (loading || user) {
     return (
        <main className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
