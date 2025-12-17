@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -31,7 +32,22 @@ const defaultCenter = {
 };
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-console.log('Using Google Maps API Key:', API_KEY ? 'Loaded' : 'Not Loaded or Empty');
+if (typeof window === 'undefined') {
+    console.log('-----------------------------------------------------------------------------------');
+    console.log('AGRIGATE_MAP_DEBUG: Attempting to load Google Map.');
+    if (API_KEY) {
+        console.log(`Using Google Maps API Key ending in: ...${API_KEY.slice(-4)}`);
+        console.log('If the map fails to load with an "ApiProjectMapError", please check the following:');
+        console.log('1. The "Maps JavaScript API" is enabled in your Google Cloud Console.');
+        console.log('2. The API key is not restricted in a way that prevents this domain from using it.');
+        console.log('3. Your project is associated with a valid billing account.');
+        console.log('Manage your APIs at: https://console.cloud.google.com/google/maps-apis/overview');
+    } else {
+        console.error('AGRIGATE_MAP_DEBUG: CRITICAL - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.');
+        console.error('The map component will fail to load. Please provide a valid API key.');
+    }
+    console.log('-----------------------------------------------------------------------------------');
+}
 
 
 export default function MapPicker({
