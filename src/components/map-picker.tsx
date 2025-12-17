@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -25,7 +25,7 @@ export default function MapPicker({
   totalValves,
   onFinalSubmit,
   isSubmitting,
-  initialCenter = { lat: 34.0522, lng: -118.2437 }, // Default to Los Angeles
+  initialCenter = { lat: 11.1271, lng: 78.6569 }, // Default to Tamil Nadu, India
 }: MapPickerProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [valves, setValves] = useState(initialValves);
@@ -33,9 +33,14 @@ export default function MapPicker({
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "",
+    googleMapsApiKey: apiKey || "fallback-key-for-dev",
     libraries: ['places'],
   });
+
+  // Effect to reset valves if the total count changes (e.g., user goes back and changes it)
+  useEffect(() => {
+    setValves([]);
+  }, [totalValves]);
 
   const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
     if (valves.length >= totalValves) {

@@ -54,12 +54,9 @@ export default function FarmForm() {
   const watchedValues = watch();
 
   const onFirstStepSubmit = () => {
-    const newValveCount = getValues('valveCount');
-    const initialValves = Array.from({ length: newValveCount }, (_, i) => ({
-      name: `Valve ${i + 1}`,
-      position: { lat: 0, lng: 0 },
-    }));
-    setValves(initialValves);
+    // We no longer pre-populate the valves array.
+    // The user will add them manually on the map.
+    setValves([]); 
     setStep(2);
   };
 
@@ -74,7 +71,6 @@ export default function FarmForm() {
       status: 'closed' as const,
     }));
     
-    // Find the average of all valve positions to set a "center" for the farm
      if (completeValves.length === 0) {
         toast({
             variant: "destructive",
