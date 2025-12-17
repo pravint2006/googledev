@@ -45,7 +45,7 @@ export function useFarmStore() {
     }
   }, [farmsError, toast]);
 
-  const addFarm = async (farmData: Omit<Farm, 'id' | 'ownerId'>) => {
+  const addFarm = async (farmData: Omit<Farm, 'id'>) => {
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -56,8 +56,6 @@ export function useFarmStore() {
     }
     if (!farmsCollection) return;
 
-    // The useCollection hook will automatically update the local state
-    // when this document is added to the database.
      await addDoc(farmsCollection, {
       ...farmData,
       ownerId: user.uid,
@@ -88,6 +86,22 @@ export function useFarmStore() {
     const farm = farms?.find((f) => f.id === farmId);
     if (!farm) return;
 
+    const openValvesCount = farm.gateValves.filter(v => v.status === 'open').length;
+    const targetValve = farm.gateValves.find(v => v.id === valveId);
+
+    if (!targetValve) return;
+
+    // Prevent closing the last open valve
+    if (openValvesCount === 1 && targetValve.status === 'open') {
+      toast({
+        variant: 'destructive',
+        title: 'Action Prevented',
+        description: 'You cannot close the last open valve on the farm.',
+      });
+      return;
+    }
+
+
     let toggledValveName = '';
     const updatedValves = farm.gateValves.map((valve) => {
       if (valve.id === valveId) {
@@ -116,7 +130,7 @@ export function useFarmStore() {
   return {
     farms: farms || [],
     isLoading,
-    isSubmitting: false, // Placeholder for isSubmitting state
+    isSubmitting: false, 
     addFarm,
     deleteFarm,
     getFarmById,

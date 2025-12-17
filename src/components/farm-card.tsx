@@ -2,15 +2,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Droplets } from 'lucide-react';
+import { ChevronRight, Droplets, AlertCircle } from 'lucide-react';
 import { type Farm } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 export default function FarmCard({ farm }: { farm: Farm }) {
   const openValves = farm.gateValves.filter(v => v.status === 'open').length;
+  const allValvesClosed = farm.gateValves.length > 0 && openValves === 0;
 
   return (
     <Link href={`/farms/${farm.id}`} className="group">
-      <Card className="h-full flex flex-col transition-all duration-300 group-hover:shadow-lg group-hover:border-primary/50">
+      <Card className={cn("h-full flex flex-col transition-all duration-300 group-hover:shadow-lg group-hover:border-primary/50", allValvesClosed && "border-destructive/50 group-hover:border-destructive bg-destructive/5")}>
         <CardHeader>
           <CardTitle className="font-headline flex items-center justify-between">
             {farm.name}
@@ -19,14 +21,18 @@ export default function FarmCard({ farm }: { farm: Farm }) {
           <CardDescription>A quick look at {farm.name}.</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
-          <div className="flex items-center space-x-4 rounded-md border p-4">
-            <Droplets className="h-8 w-8 text-primary" />
+          <div className={cn("flex items-center space-x-4 rounded-md border p-4", allValvesClosed ? "border-destructive/20 bg-destructive/5" : "")}>
+            {allValvesClosed ? <AlertCircle className="h-8 w-8 text-destructive" /> : <Droplets className="h-8 w-8 text-primary" />}
             <div className="flex-1 space-y-1">
               <p className="text-sm font-medium leading-none">
                 Gate Valves
               </p>
-              <p className="text-sm text-muted-foreground">
-                {openValves} of {farm.gateValves.length} valves are currently open.
+              <p className={cn("text-sm", allValvesClosed ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                {allValvesClosed ? (
+                  "All valves are closed!"
+                ) : (
+                  `${openValves} of ${farm.gateValves.length} valves are currently open.`
+                )}
               </p>
             </div>
           </div>

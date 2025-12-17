@@ -69,6 +69,16 @@ export default function FarmDetailPage() {
             </Button>
           </div>
         </div>
+        
+        {openValvesCount === 0 && farm.gateValves.length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Critical Alert: All Valves Closed</AlertTitle>
+            <AlertDescription>
+              No gate valves are currently open. This may cause a critical pressure buildup. Please open a valve immediately.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
