@@ -1,13 +1,12 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,11 +20,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFarmStore } from '@/hooks/use-farm-store';
-import { type GateValve } from '@/lib/data';
+import { type GateValve, type Farm } from '@/lib/data';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from './ui/progress';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { GeoPoint } from 'firebase/firestore';
 
 const formSchema = z.object({
   farmName: z.string().min(3, 'Farm name must be at least 3 characters.'),
@@ -38,11 +37,9 @@ export default function FarmForm() {
   const [step, setStep] = useState(1);
   const [valves, setValves] = useState<GateValve[]>([]);
   const router = useRouter();
-  const { addFarm } = useFarmStore();
+  const { addFarm, isSubmitting: isStoreSubmitting } = useFarmStore();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const mapImage = PlaceHolderImages.find(p => p.id === 'farm-map-new');
-
+  const [farmLocation, setFarmLocation] = useState<GeoPoint | null>(null);
 
   const { control, handleSubmit, watch, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -72,41 +69,44 @@ export default function FarmForm() {
   };
 
   const handleFinalSubmit = async () => {
-    setIsSubmitting(true);
-    
-    try {
-      await addFarm({
-        name: watchedValues.farmName,
-        gateValves: valves,
-        mapImageUrl: mapImage?.imageUrl || '',
-        mapImageHint: mapImage?.imageHint || 'satellite farm',
-      });
-      
-      toast({
-          title: "Farm Saved!",
-          description: "Your new farm has been created successfully."
-      });
-
-      router.push('/farms');
-    } catch(e) {
-      // Error toast is already handled by the hook
-      setIsSubmitting(false);
+    if (!farmLocation) {
+        toast({
+            variant: "destructive",
+            title: "Location not set",
+            description: "Please click on the map to set your farm's location.",
+        });
+        return;
     }
+
+    const newFarmData: Omit<Farm, 'id'> = {
+        name: watchedValues.farmName,
+        location: farmLocation,
+        gateValves: valves,
+    };
+    
+    await addFarm(newFarmData);
+    
+    toast({
+        title: "Farm Saved!",
+        description: "Your new farm has been created successfully."
+    });
+
+    router.push('/farms');
   };
 
   const progressValue = (step / 2) * 100;
   
-  const isSaveDisabled = isSubmitting;
+  const isSaveDisabled = isStoreSubmitting || !farmLocation;
 
   return (
     <Card>
       <CardHeader>
         <Progress value={progressValue} className="mb-4 h-2" />
-        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Confirm Farm'}</CardTitle>
+        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Set Location'}</CardTitle>
         <CardDescription>
             {step === 1 
                 ? 'Provide a name and the number of valves for your new farm.' 
-                : `A map will be shown here once API issues are resolved. Press Save to continue.`}
+                : 'Click on the map to pinpoint your farm\'s location.'}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
@@ -148,29 +148,16 @@ export default function FarmForm() {
                 {step === 2 && (
                     <>
                         <CardContent>
-                            <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
-                                {mapImage && (
-                                <Image
-                                    src={mapImage.imageUrl}
-                                    alt={mapImage.description}
-                                    fill
-                                    className="object-cover"
-                                    data-ai-hint={mapImage.imageHint}
-                                />
-                                )}
-                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                                <p className="text-foreground text-center p-4 bg-background/80 rounded-lg">Interactive map is temporarily disabled.</p>
-                                </div>
-                            </div>
+                            <p className='text-sm text-muted-foreground mb-4'>Step 2: Please place the pin on the map below.</p>
                         </CardContent>
                         <CardFooter className="justify-between">
-                            <Button variant="outline" onClick={handleBack} disabled={isSubmitting}>
+                            <Button variant="outline" onClick={handleBack} disabled={isStoreSubmitting}>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                             </Button>
                             <Button onClick={handleFinalSubmit} disabled={isSaveDisabled}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                {isSubmitting ? 'Saving...' : 'Save Farm'}
+                                {isStoreSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                {isStoreSubmitting ? 'Saving...' : 'Save Farm'}
                             </Button>
                         </CardFooter>
                     </>
