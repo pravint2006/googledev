@@ -11,8 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const WeatherInputSchema = z.object({
-  lat: z.number().describe('The latitude for the weather forecast.'),
-  lon: z.number().describe('The longitude for the weather forecast.'),
+  location: z.string().describe('The city or location for the weather forecast (e.g., "Chennai, India").'),
 });
 export type WeatherInput = z.infer<typeof WeatherInputSchema>;
 
@@ -43,11 +42,11 @@ const prompt = ai.definePrompt({
   output: { schema: WeatherOutputSchema },
   prompt: `You are a weather forecasting service.
   
-  Based on the provided latitude: {{{lat}}} and longitude: {{{lon}}}, provide a realistic and representative weather forecast for that location.
+  Based on the provided location: {{{location}}}, provide a realistic and representative weather forecast.
   
   Important rules:
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather.
-  - The city name must be a real, major city that is plausible for the given coordinates.
+  - The city name in the output MUST match the input location.
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. So the forecast should be for Monday, Tuesday, and Wednesday.
   - Make the weather conditions varied and interesting. For example, don't make it "Sunny" every day.

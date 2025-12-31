@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
 import { Loader2, Wind, Droplets, AlertCircle } from 'lucide-react';
@@ -8,7 +8,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { useJsApiLoader, type Libraries } from '@react-google-maps/api';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -17,16 +16,11 @@ const weatherIcons = {
   Stormy: CloudLightningIcon,
 };
 
-const libraries: Libraries = ['places'];
-
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
-
-  // We are removing the autocomplete functionality to prevent API errors.
-  // The user can now type a city and press Enter or a button.
 
   const fetchWeatherForLocation = async (location: string) => {
     if (!location) {
@@ -36,14 +30,10 @@ export default function WeatherWidget() {
     setLoading(true);
     setError(null);
     try {
-      // Since we don't have lat/lon, we'll have to adapt the AI flow or
-      // for now, we'll simulate a lookup based on a hardcoded value for demonstration.
-      // This is a limitation of not having a geocoding API.
-      // We will use a fixed lat/lon for any entered city.
-      const weatherData = await getWeather({ lat: 40.7128, lon: -74.0060 }); // Using New York as a stand-in
-      weatherData.city = location; // Override the city name with user input
+      const weatherData = await getWeather({ location });
       setWeather(weatherData);
     } catch (e) {
+      console.error(e);
       setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
     } finally {
       setLoading(false);
