@@ -13,6 +13,9 @@ import { z } from 'genkit';
 
 const WeatherInputSchema = z.object({
   location: z.string().describe('The city or location for the weather forecast (e.g., "Chennai, India").'),
+  pincode: z.string().optional().describe('An optional Indian pincode to help specify the location.'),
+  lat: z.number().optional().describe('The latitude for the location.'),
+  lon: z.number().optional().describe('The longitude for the location.'),
 });
 export type WeatherInput = z.infer<typeof WeatherInputSchema>;
 
@@ -45,12 +48,16 @@ const prompt = ai.definePrompt({
   output: { schema: WeatherOutputSchema },
   prompt: `You are a weather forecasting service.
   
-  Based on the provided location: {{{location}}}, provide a realistic and representative weather forecast.
+  You will receive one of two types of input:
+  1. A location name, optionally with an Indian pincode.
+  2. Latitude and longitude coordinates.
+
+  Based on the provided input, determine the location and provide a realistic and representative weather forecast.
   
   Important rules:
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather.
   - The city name, district, and pincode in the output MUST be the full, unambiguous name of the location, including state/region and country if applicable.
-  - If the user asks for "Thungavi, Tamil Nadu, India", you MUST use "Tirupur" as the district and "642203" as the pincode. For other locations, provide a plausible district and pincode.
+  - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. So the forecast should be for Monday, Tuesday, and Wednesday.
   - Make the weather conditions varied and interesting. For example, don't make it "Sunny" every day.
