@@ -11,7 +11,11 @@ export default function RootPage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        redirect('/dashboard');
+        if (user.emailVerified) {
+          redirect('/dashboard');
+        } else {
+          redirect('/verify-email');
+        }
       } else {
         redirect('/login');
       }

@@ -17,12 +17,24 @@ export default function AppLayout({
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-       router.push('/login');
+    if (loading) return; // Wait until user status is determined
+
+    if (!user) {
+      // If not logged in, redirect to the login page
+      router.push('/login');
+      return;
     }
+
+    if (!user.emailVerified) {
+      // If logged in but email is not verified, redirect to the verify-email page
+      router.push('/verify-email');
+      return;
+    }
+
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  // Show a loading spinner while checking auth state or if the user is not verified yet
+  if (loading || !user || !user.emailVerified) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

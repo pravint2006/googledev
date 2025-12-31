@@ -18,8 +18,14 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard');
+    if (loading) return;
+
+    if (user) {
+      if (user.emailVerified) {
+        router.push('/dashboard');
+      } else {
+        router.push('/verify-email');
+      }
     }
   }, [user, loading, router]);
   

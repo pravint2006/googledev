@@ -61,10 +61,11 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         await sendEmailVerification(userCredential.user);
       }
       toast({
-        title: 'Account Created! Please Verify Your Email.',
-        description: "We've sent a verification link to your email address. Please check your inbox and spam folder.",
+        title: 'Account Created!',
+        description: "We've sent a verification link to your email address.",
       });
-      router.push('/dashboard');
+      // Redirect to the verification page instead of the dashboard
+      router.push('/verify-email');
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
