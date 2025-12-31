@@ -63,25 +63,19 @@ const prompt = ai.definePrompt({
   name: 'getWeatherPrompt',
   input: { schema: WeatherInputSchema },
   output: { schema: WeatherOutputSchema },
-  prompt: `You are a weather forecasting service. Your primary function is to generate plausible, representative, and detailed weather data.
+  prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data.
   
-  You will receive one of two types of input:
-  1. A location name, optionally with an Indian pincode.
-  2. Latitude and longitude coordinates.
-
-  Based on the provided input, determine the location and provide a realistic and representative weather forecast.
+  Based on the provided input location (either a name/pincode or lat/lon), provide a realistic weather forecast.
   
   CRITICAL RULES:
-  - You MUST invent plausible weather data. Do not attempt to look up real-time weather. This is for a simulation.
-  - The 'city' field in the output MUST be the full, unambiguous name of the location (e.g., "Thungavi, Tamil Nadu, India").
+  - You MUST invent plausible weather data. Do not look up real-time weather. This is for a simulation.
+  - The 'city' in the output must be the full name of the location (e.g., "Thungavi, Tamil Nadu, India").
   - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   - Return a 24-hour forecast starting from the next hour.
   - Return a 7-day forecast starting from tomorrow.
-  - Today is Sunday. The forecast should be for Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and the following Sunday.
-  - For each hour in the hourly forecast, you must provide all fields: time, temp, condition, and rainProbability.
-  - For each day in the daily forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, uvIndex, and precipitationChance.
-  - The 'feelsLike' temperature should be a plausible value based on the current temperature, humidity, and wind speed.
-  - Make the weather conditions and precipitation chances varied and interesting across the days.
+  - The days of the week should be Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and Sunday.
+  - For each hour and day, you MUST provide all fields defined in the schema.
+  - The 'feelsLike' temperature should be plausible based on current temperature, humidity, and wind speed.
   `,
 });
 
@@ -96,3 +90,4 @@ const getWeatherFlow = ai.defineFlow(
     return output!;
   }
 );
+

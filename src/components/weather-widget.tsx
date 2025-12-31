@@ -12,7 +12,7 @@ import { Skeleton } from './ui/skeleton';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { cn } from '@/lib/utils';
-
+import Image from 'next/image';
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -55,7 +55,11 @@ export default function WeatherWidget() {
         setWeather(weatherData);
         setView('weather');
         // Save the successfully fetched location to the user's profile
-        updateUserProfile({ lastWeatherLocation: { ...input, location: weatherData.city } });
+         if (input.lat && input.lon) {
+            updateUserProfile({ lastWeatherLocation: { ...input, location: weatherData.city } });
+        } else {
+            updateUserProfile({ lastWeatherLocation: { ...input, location: weatherData.city } });
+        }
       })
       .catch(e => {
         console.error(e);
