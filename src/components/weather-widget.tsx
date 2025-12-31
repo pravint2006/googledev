@@ -1,17 +1,18 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon } from './weather-icons';
 import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Waves } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { type WeatherOutput, getWeather, type DailyForecast, type HourlyForecast } from '@/ai/flows/weather-flow';
+import { type WeatherOutput, getWeather, type DailyForecast, type HourlyForecast, type WeatherInput } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -28,13 +29,43 @@ type ViewState = 'initial' | 'form' | 'loading' | 'weather' | 'error';
 
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
-  const [view, setView] = useState<ViewState>('initial');
+  const [view, setView] = useState<ViewState>('loading'); // Start in loading state
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
   const [pincodeInput, setPincodeInput] = useState('');
+  const { userProfile, updateUserProfile, isLoading: isProfileLoading } = useUserProfile();
   
   const bgImage = PlaceHolderImages.find(p => p.id === 'login-background');
+  
+  useEffect(() => {
+    // This effect runs once when the component mounts and user profile is loaded
+    if (!isProfileLoading) {
+      if (userProfile?.lastWeatherLocation) {
+        // If a location is saved, fetch weather for it
+        fetchWeather(userProfile.lastWeatherLocation);
+      } else {
+        // Otherwise, show the initial selection screen
+        setView('initial');
+      }
+    }
+  }, [isProfileLoading, userProfile]);
 
+  const fetchWeather = (input: WeatherInput) => {
+    setView('loading');
+    setError(null);
+    getWeather(input)
+      .then((weatherData) => {
+        setWeather(weatherData);
+        setView('weather');
+        // Save the successfully fetched location to the user's profile
+        updateUserProfile({ lastWeatherLocation: input });
+      })
+      .catch(e => {
+        console.error(e);
+        setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
+        setView('error');
+      });
+  };
 
   const resetWidget = () => {
     setWeather(null);
@@ -45,16 +76,8 @@ export default function WeatherWidget() {
   }
 
   const fetchWeatherByCoords = (lat: number, lon: number) => {
-    setView('loading');
-    setError(null);
-    getWeather({ location: 'current location', lat, lon })
-      .then(setWeather)
-      .then(() => setView('weather'))
-      .catch(e => {
-        console.error(e);
-        setError('Could not fetch weather for your location. The AI model might be busy. Please try again.');
-        setView('error');
-      });
+    const input: WeatherInput = { location: 'current location', lat, lon };
+    fetchWeather(input);
   };
 
   const handleUseLocation = () => {
@@ -82,16 +105,8 @@ export default function WeatherWidget() {
       setView('error');
       return;
     }
-    setView('loading');
-    setError(null);
-    getWeather({ location: locationInput, pincode: pincodeInput })
-      .then(setWeather)
-      .then(() => setView('weather'))
-      .catch(e => {
-        console.error(e);
-        setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
-        setView('error');
-      });
+    const input: WeatherInput = { location: locationInput, pincode: pincodeInput };
+    fetchWeather(input);
   };
 
   const renderContent = () => {

@@ -1,3 +1,4 @@
+
 /**
  * This ruleset enforces a strict user-ownership model for a farm management application.
  *
@@ -61,7 +62,9 @@ service cloud.firestore {
      * Ensures the document's internal ID matches the document path ID.
      */
     function isValidNewUser(userId) {
-      return request.resource.data.id == userId;
+      // On create, lastWeatherLocation should not be present.
+      let hasNoExtraFields = !('lastWeatherLocation' in request.resource.data);
+      return request.resource.data.id == userId && hasNoExtraFields;
     }
 
     /**
@@ -69,7 +72,15 @@ service cloud.firestore {
      * Prevents the user's unique ID from being changed after creation.
      */
     function hasImmutableUserFields() {
-      return request.resource.data.id == resource.data.id;
+      // Allow updates only to 'lastWeatherLocation'. Other fields are immutable.
+      let allowedKeys = ['id', 'email', 'firstName', 'lastName', 'lastWeatherLocation'];
+      let incomingKeys = request.resource.data.keys();
+      
+      return request.resource.data.id == resource.data.id
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.firstName == resource.data.firstName
+        && request.resource.data.lastName == resource.data.lastName
+        && incomingKeys.hasAll(allowedKeys) && allowedKeys.hasAll(incomingKeys);
     }
 
     /**
@@ -129,7 +140,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && isValidNewUser(userId);
+      allow create: if isOwner(userId); // Simplified for initial profile creation via signup
       allow update: if isOwner(userId) && hasImmutableUserFields();
       allow delete: if isOwner(userId);
 

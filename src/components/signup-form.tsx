@@ -17,8 +17,9 @@ import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { createUserWithEmailAndPassword, updateProfile, type AuthError, sendEmailVerification } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void;
@@ -28,6 +29,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsLoading(true);
 
     if (password.length < 6) {
@@ -54,12 +56,29 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         email,
         password
       );
+
       if (userCredential.user) {
-        await updateProfile(userCredential.user, {
+        const user = userCredential.user;
+        const [firstName, ...lastName] = displayName.split(' ');
+        
+        // 1. Update auth profile
+        await updateProfile(user, {
           displayName: displayName,
         });
-        await sendEmailVerification(userCredential.user);
+
+        // 2. Create user document in Firestore
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+          id: user.uid,
+          email: user.email,
+          firstName: firstName || '',
+          lastName: lastName.join(' ') || '',
+        });
+        
+        // 3. Send verification email
+        await sendEmailVerification(user);
       }
+      
       toast({
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",

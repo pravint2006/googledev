@@ -95,6 +95,16 @@
         "lastName": {
           "type": "string",
           "description": "The user's last name."
+        },
+        "lastWeatherLocation": {
+            "type": "object",
+            "description": "The last location the user searched for weather.",
+            "properties": {
+                "location": { "type": "string" },
+                "pincode": { "type": "string" },
+                "lat": { "type": "number" },
+                "lon": { "type": "number" }
+            }
         }
       },
       "required": [
