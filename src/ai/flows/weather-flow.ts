@@ -21,16 +21,20 @@ export type WeatherInput = z.infer<typeof WeatherInputSchema>;
 
 const DailyForecastSchema = z.object({
   day: z.string().describe('The day of the week (e.g., "Monday").'),
-  temp: z.number().describe('The temperature in Celsius.'),
-  condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy']).describe('The weather condition.'),
+  minTemp: z.number().describe('The minimum temperature for the day in Celsius.'),
+  maxTemp: z.number().describe('The maximum temperature for the day in Celsius.'),
+  condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition.'),
+  windSpeed: z.number().describe('The wind speed in km/h.'),
+  humidity: z.number().describe('The humidity percentage.'),
+  uvIndex: z.number().describe('The UV index, from 0 to 11+.')
 });
 
 const WeatherOutputSchema = z.object({
-  city: z.string().describe("The city for which the weather is being reported."),
+  city: z.string().describe("The city for which the weather is being reported, including state/region and country."),
   district: z.string().describe('The district or county for the location.'),
   pincode: z.string().describe('The postal code or pincode for the location.'),
   currentTemp: z.number().describe('The current temperature in Celsius.'),
-  condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy']).describe('The current weather condition.'),
+  condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
   forecast: z.array(DailyForecastSchema).describe('A 3-day weather forecast.'),
@@ -46,7 +50,7 @@ const prompt = ai.definePrompt({
   name: 'getWeatherPrompt',
   input: { schema: WeatherInputSchema },
   output: { schema: WeatherOutputSchema },
-  prompt: `You are a weather forecasting service.
+  prompt: `You are a weather forecasting service. Your primary function is to generate plausible, representative, and detailed weather data.
   
   You will receive one of two types of input:
   1. A location name, optionally with an Indian pincode.
@@ -54,13 +58,14 @@ const prompt = ai.definePrompt({
 
   Based on the provided input, determine the location and provide a realistic and representative weather forecast.
   
-  Important rules:
-  - You MUST invent plausible weather data. Do not attempt to look up real-time weather.
-  - The city name, district, and pincode in the output MUST be the full, unambiguous name of the location, including state/region and country if applicable.
+  CRITICAL RULES:
+  - You MUST invent plausible weather data. Do not attempt to look up real-time weather. This is for a simulation.
+  - The 'city' field in the output MUST be the full, unambiguous name of the location (e.g., "Thungavi, Tamil Nadu, India").
   - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   - Return a 3-day forecast starting from tomorrow.
-  - Today is Sunday. So the forecast should be for Monday, Tuesday, and Wednesday.
-  - Make the weather conditions varied and interesting. For example, don't make it "Sunny" every day.
+  - Today is Sunday. The forecast should be for Monday, Tuesday, and Wednesday.
+  - For each day in the forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, and uvIndex.
+  - Make the weather conditions varied and interesting across the days.
   `,
 });
 

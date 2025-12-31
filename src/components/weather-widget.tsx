@@ -4,17 +4,23 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
-import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit } from 'lucide-react';
+import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Thermometer, Sun, Umbrella, Waves, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
+import { type WeatherOutput, getWeather, type DailyForecast } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
-const weatherIcons = {
+
+const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
   Cloudy: CloudIcon,
   Rainy: CloudRainIcon,
   Stormy: CloudLightningIcon,
+  'Partly Cloudy': CloudIcon,
+  Thunderstorms: CloudLightningIcon,
+  Hazy: CloudIcon,
 };
 
 type ViewState = 'initial' | 'form' | 'loading' | 'weather' | 'error';
@@ -79,7 +85,7 @@ export default function WeatherWidget() {
       .then(() => setView('weather'))
       .catch(e => {
         console.error(e);
-        setError('Could not fetch weather data. Please check your input and try again.');
+        setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
         setView('error');
       });
   };
@@ -132,7 +138,7 @@ export default function WeatherWidget() {
                             <span>{weather.windSpeed} km/h</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Droplets className="h-5 w-5 text-muted-foreground" />
+                            <Waves className="h-5 w-5 text-muted-foreground" />
                             <span>{weather.humidity}% Humidity</span>
                         </div>
                     </div>
@@ -141,16 +147,10 @@ export default function WeatherWidget() {
                     <h3 className="font-semibold mb-2 text-foreground/80">3-Day Forecast</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {weather.forecast.map((day, index) => {
-                        const DayIcon = weatherIcons[day.condition] || SunIcon;
-                        return (
-                            <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-background/50 border">
-                            <DayIcon className="w-8 h-8 text-primary/80" />
-                            <div>
-                                <p className="font-semibold">{day.day}</p>
-                                <p className="text-muted-foreground">{day.temp}°C</p>
-                            </div>
-                            </div>
-                        );
+                          const DayIcon = weatherIcons[day.condition] || SunIcon;
+                          return (
+                            <ForecastCard key={index} day={day} DayIcon={DayIcon} />
+                          );
                         })}
                     </div>
                     </div>
@@ -225,6 +225,41 @@ export default function WeatherWidget() {
   );
 }
 
+function ForecastCard({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
+  return (
+    <div className="p-4 rounded-lg bg-background/50 border space-y-4">
+        <div className="flex justify-between items-center">
+            <h4 className="font-bold">{day.day}</h4>
+            <DayIcon className="w-8 h-8 text-primary" />
+        </div>
+        
+        <div className="flex justify-between items-end">
+            <div className="flex items-baseline">
+                <p className="text-2xl font-bold">{day.maxTemp}°</p>
+                <p className="text-muted-foreground">/{day.minTemp}°</p>
+            </div>
+            <p className="text-sm text-muted-foreground font-medium">{day.condition}</p>
+        </div>
+
+        <div className="space-y-2 text-sm text-muted-foreground pt-2 border-t">
+          <div className='flex justify-between'>
+            <span className='flex items-center gap-1.5'><Wind /> Wind</span>
+            <span>{day.windSpeed} km/h</span>
+          </div>
+          <div className='flex justify-between'>
+            <span className='flex items-center gap-1.5'><Waves /> Humidity</span>
+            <span>{day.humidity}%</span>
+          </div>
+           <div className='flex justify-between'>
+            <span className='flex items-center gap-1.5'><Sun /> UV Index</span>
+            <Badge variant={day.uvIndex > 7 ? "destructive" : day.uvIndex > 4 ? "secondary" : "default"} className='border'>{day.uvIndex}</Badge>
+          </div>
+        </div>
+    </div>
+  );
+}
+
+
 function WeatherLoadingSkeleton() {
     return (
         <>
@@ -251,9 +286,9 @@ function WeatherLoadingSkeleton() {
                 <div>
                     <Skeleton className="h-6 w-24 mb-2" />
                     <div className="grid sm:grid-cols-3 gap-4">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-40 w-full rounded-lg" />
+                        <Skeleton className="h-40 w-full rounded-lg" />
+                        <Skeleton className="h-40 w-full rounded-lg" />
                     </div>
                 </div>
             </CardContent>
