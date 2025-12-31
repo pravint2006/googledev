@@ -18,6 +18,7 @@ export default function VerifyEmailPage() {
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
 
+  // This effect redirects the user if their status changes
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -26,6 +27,24 @@ export default function VerifyEmailPage() {
       router.push('/dashboard');
     }
   }, [user, loading, router]);
+  
+  // This effect polls for verification status changes
+  useEffect(() => {
+    if (!user || user.emailVerified) return;
+
+    const interval = setInterval(async () => {
+      await user.reload();
+      // The onAuthStateChanged listener in the useUser hook will get the updated user
+      // and trigger the redirect effect above. We just need to trigger a re-check.
+      // To be safe, we can manually check here too.
+      if (auth?.currentUser?.emailVerified) {
+        router.push('/dashboard');
+      }
+    }, 3000); // Check every 3 seconds
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, [user, auth, router]);
+
 
   const handleResendVerification = async () => {
     if (!user) return;
