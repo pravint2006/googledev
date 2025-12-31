@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { PlusCircle, Tractor } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FarmCard from '@/components/farm-card';
+import WeatherWidget from '@/components/weather-widget';
 
 export default function DashboardPage() {
   const { farms, isLoading } = useFarmStore();
@@ -23,7 +24,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's an overview of your farms.
+            Welcome back! Here's an overview of your farms and local weather.
           </p>
         </div>
         <Button asChild>
@@ -33,6 +34,10 @@ export default function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      <WeatherWidget />
+
+      <h2 className="text-2xl font-bold tracking-tight font-headline border-t pt-8">Your Farms</h2>
 
       {farms.length === 0 ? (
         <Card className="flex flex-col items-center justify-center p-12 text-center mt-10">
@@ -69,10 +74,14 @@ function DashboardLoadingSkeleton() {
         </div>
         <Skeleton className="h-10 w-36" />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Skeleton className="h-40 rounded-lg" />
-        <Skeleton className="h-40 rounded-lg" />
-        <Skeleton className="h-40 rounded-lg" />
+      <Skeleton className="h-60 w-full" />
+       <div className="border-t pt-8">
+         <Skeleton className="h-8 w-32 mb-6" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-40 rounded-lg" />
+            <Skeleton className="h-40 rounded-lg" />
+            <Skeleton className="h-40 rounded-lg" />
+        </div>
       </div>
     </div>
   );
