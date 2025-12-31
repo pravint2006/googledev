@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, type AuthError } from 'firebase/auth';
+import { signInWithEmailAndPassword, type AuthError, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -24,6 +25,9 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+
   
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,58 +64,130 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!auth || !resetEmail) {
+        toast({
+            variant: "destructive",
+            title: "Email Required",
+            description: "Please enter your email address to reset your password.",
+        });
+        return;
+    }
+    setIsLoading(true);
+    try {
+        await sendPasswordResetEmail(auth, resetEmail);
+        toast({
+            title: "Password Reset Email Sent",
+            description: `If an account exists for ${resetEmail}, you will receive an email with instructions to reset your password.`,
+        });
+        setIsResetDialogOpen(false); // Close dialog on success
+    } catch (error) {
+        const authError = error as AuthError;
+        let errorMessage = "An unknown error occurred. Please try again.";
+        if(authError.code === 'auth/invalid-email') {
+            errorMessage = "Please enter a valid email address.";
+        }
+        // We don't reveal if the user exists or not for security reasons.
+        // The success message is shown even for non-existent emails.
+        toast({
+            variant: "destructive",
+            title: "Error Sending Email",
+            description: errorMessage,
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+
   return (
-    <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4">
-          <AppLogo className="text-foreground" />
-        </div>
-        <CardTitle className="font-headline">Welcome Back</CardTitle>
-        <CardDescription>Sign in to manage your farms.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleEmailSignIn} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email-login">Email</Label>
+    <>
+      <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4">
+            <AppLogo className="text-foreground" />
+          </div>
+          <CardTitle className="font-headline">Welcome Back</CardTitle>
+          <CardDescription>Sign in to manage your farms.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-login">Email</Label>
+              <Input
+                id="email-login"
+                type="email"
+                placeholder="farmer@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="password-login">Password</Label>
+                    <Button variant="link" size="sm" type="button" className="p-0 h-auto text-xs" onClick={() => setIsResetDialogOpen(true)}>
+                        Forgot password?
+                    </Button>
+                </div>
+              <Input
+                id="password-login"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90"
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex-col gap-4">
+          <p className="text-xs text-muted-foreground">
+            Don't have an account?{' '}
+            <Button variant="link" size="sm" className="p-0 h-auto" type="button" onClick={onSwitchToSignup}>
+              Sign up
+            </Button>
+          </p>
+        </CardFooter>
+      </Card>
+      
+      {/* Password Reset Dialog */}
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Password</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter your email address below. We'll send you a link to reset your password.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="reset-email">Email Address</Label>
             <Input
-              id="email-login"
+              id="reset-email"
               type="email"
-              placeholder="farmer@example.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
+              placeholder="you@example.com"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password-login">Password</Label>
-            <Input
-              id="password-login"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full bg-primary hover:bg-primary/90"
-            disabled={isLoading}
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-4">
-        <p className="text-xs text-muted-foreground">
-          Don't have an account?{' '}
-          <Button variant="link" size="sm" className="p-0 h-auto" type="button" onClick={onSwitchToSignup}>
-            Sign up
-          </Button>
-        </p>
-      </CardFooter>
-    </Card>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePasswordReset} disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send Reset Link
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
