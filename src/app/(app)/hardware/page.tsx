@@ -15,8 +15,8 @@ const char* GPRS_USER = "";
 const char* GPRS_PASS = "";
 
 // Your Firebase project credentials from your app's config
-#define API_KEY "YOUR_FIREBASE_API_KEY"
-#define DATABASE_URL "YOUR_FIREBASE_DATABASE_URL" // e.g., "my-project-id.firebaseio.com"
+#define API_KEY "AIzaSyAf0BpW4HGxWmnKF8Os6pl3SWcCpZ7spMA"
+#define DATABASE_URL "dev-61141163-629c6.firebaseio.com"
 
 // The specific User and Farm this device belongs to
 #define USER_ID "THE_USER_ID_FOR_THIS_FARM"
@@ -24,7 +24,6 @@ const char* GPRS_PASS = "";
 
 // The specific Valve this device controls
 #define VALVE_ID "THE_GATE_VALVE_ID_FOR_THIS_DEVICE"
-#define VALVE_INDEX 0 // The index of the valve in the 'gateValves' array
 
 // Pin connected to the Relay Module
 #define RELAY_PIN 23
@@ -43,10 +42,16 @@ void streamCallback(StreamData data) {
   String path = data.dataPath();
   Serial.printf("Path: %s\\n", path.c_str());
 
-  // We only care about changes to the 'status' field of our valve
+  // Check if the change is for the 'status' field of any valve.
+  // The path will be /<index>/status, so we look for the suffix.
   if (path.endsWith("/status")) {
+    String valveIdFromPath; // You may need to parse this if structure is complex
+    
+    // Find which valve this update is for by finding the parent document
+    // For now, we assume we're listening to one valve, but this shows the principle
+    
     String newStatus = data.stringData();
-    Serial.printf("New Valve Status: %s\\n", newStatus.c_str());
+    Serial.printf("New Valve Status for a valve is: %s\\n", newStatus.c_str());
 
     if (newStatus == "open") {
       digitalWrite(RELAY_PIN, HIGH); // Turn the relay ON
@@ -87,28 +92,25 @@ void setup() {
   // --- Configure Firebase ---
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  auth.user.email = "device@example.com"; // Use a placeholder for device auth
-  auth.user.password = "device_password"; // A secure password for device users
+  // For device authentication, you can use a custom token or a dedicated device-level account
+  auth.user.email = "device@example.com";
+  auth.user.password = "a_secure_password_for_device";
 
   config.token_status_callback = tokenStatusCallback;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true); // For GSM, this helps manage reconnections
 
   // --- Start Listening to Firestore ---
-  String documentPath = "users/" + String(USER_ID) + "/farms/" + String(FARM_ID);
+  // Path to the specific gate valve document this device will control
+  String documentPath = "users/" + String(USER_ID) + "/farms/" + String(FARM_ID) + "/gateValves/" + String(VALVE_ID);
   
-  // Listen for changes ONLY on the 'gateValves' field of the farm document.
-  // This is more efficient than streaming the whole document.
-  // We specify the index of the valve we care about.
-  String nodePath = "gateValves/" + String(VALVE_INDEX);
-
-  if (!Firebase.Firestore.beginStream(&fbdo, documentPath.c_str(), nodePath.c_str())) {
+  if (!Firebase.Firestore.beginStream(&fbdo, documentPath.c_str())) {
     Serial.printf("Stream begin error: %s\\n", fbdo.errorReason().c_str());
     return;
   }
 
   Firebase.Firestore.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
-  Serial.printf("Listening for changes at: %s/%s\\n", documentPath.c_str(), nodePath.c_str());
+  Serial.printf("Listening for changes at: %s\\n", documentPath.c_str());
 }
 
 void loop() {
@@ -178,7 +180,7 @@ void loop() {
             ESP32 Sample Code (Arduino C++)
           </CardTitle>
           <CardDescription>
-            This is a starting point for your device's firmware. You'll need the Mobizt Firebase-ESP-Client library and to adapt the GSM connection logic for your specific module.
+            This is a starting point for your device's firmware. You'll need the Mobizt Firebase-ESP-Client library and to adapt the GSM connection logic for your specific module. Before uploading, you must fill in your `USER_ID`, `FARM_ID`, and `VALVE_ID`.
           </CardDescription>
         </CardHeader>
         <CardContent>
