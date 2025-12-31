@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, type AuthError } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
@@ -66,17 +66,18 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      // Use signInWithRedirect instead of signInWithPopup
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    } catch (error) {
+       const authError = error as AuthError;
        toast({
         variant: 'destructive',
         title: 'Google Sign-In Error',
-        description: error.message || 'Could not initiate Google Sign-In. Please try again.',
+        description: authError.message || 'Could not sign in with Google. Please try again.',
       });
-       setIsGoogleLoading(false);
-    } 
-    // No finally block to set loading to false, as the page will redirect
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
 
