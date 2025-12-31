@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -83,13 +84,20 @@ export default function WeatherWidget() {
           <Card>
               <CardHeader>
                   <CardTitle className="font-headline">Weather Forecast</CardTitle>
-                  <CardDescription>Enter a location to see the weather.</CardDescription>
               </CardHeader>
               <CardContent>
-                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md mb-4">
+                  <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <p>Could not load Google Maps Autocomplete. Please ensure your API key is correct and the "Places API" is enabled in your Google Cloud console.</p>
-                  </div>
+                      <AlertTitle>Google Maps API Error</AlertTitle>
+                      <AlertDescription>
+                          <p>The location autocomplete feature could not be loaded. This is likely due to one of two reasons:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                              <li>The <strong>Places API</strong> is not enabled in your Google Cloud project.</li>
+                              <li>Your project does not have an active <strong>billing account</strong> linked to it.</li>
+                          </ol>
+                          <p className='mt-2'>Please visit the Google Cloud Console to enable the Places API and ensure a billing account is active.</p>
+                      </AlertDescription>
+                  </Alert>
               </CardContent>
           </Card>
       );
