@@ -7,15 +7,49 @@ import { LoginForm } from '@/components/login-form';
 import { SignUpForm } from '@/components/signup-form';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { getRedirectResult } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const bgImage = PlaceHolderImages.find((p) => p.id === 'login-background');
   const [isLoginView, setIsLoginView] = useState(true);
   const { user, loading } = useUser();
   const router = useRouter();
+  const auth = useAuth();
+  const { toast } = useToast();
+  const [isCheckingRedirect, setIsCheckingRedirect] = useState(true);
+
+  useEffect(() => {
+    const checkRedirect = async () => {
+      if (auth) {
+        try {
+          const result = await getRedirectResult(auth);
+          if (result) {
+            // This is the signed-in user
+            const user = result.user;
+            toast({
+              title: 'Signed In',
+              description: `Welcome back, ${user.displayName || 'user'}!`,
+            });
+            router.push('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error during redirect result:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Sign In Failed',
+            description: 'Could not sign in with Google. Please try again.',
+          });
+        }
+      }
+      setIsCheckingRedirect(false);
+    };
+
+    checkRedirect();
+  }, [auth, router, toast]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -23,7 +57,7 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
   
-  if (loading || user) {
+  if (loading || user || isCheckingRedirect) {
     return (
        <main className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
