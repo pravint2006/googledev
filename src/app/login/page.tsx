@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useUser, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { getRedirectResult } from 'firebase/auth';
+import { getRedirectResult, type AuthError } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
@@ -38,10 +38,11 @@ export default function LoginPage() {
           }
         } catch (error) {
           console.error('Error during redirect result:', error);
+          const authError = error as AuthError;
           toast({
             variant: 'destructive',
             title: 'Sign In Failed',
-            description: 'Could not sign in with Google. Please try again.',
+            description: authError.message || 'Could not sign in with Google. Please try again.',
           });
         }
       }
