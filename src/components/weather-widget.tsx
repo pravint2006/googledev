@@ -9,10 +9,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather, type DailyForecast, type HourlyForecast, type WeatherInput } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import Image from 'next/image';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { cn } from '@/lib/utils';
 
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -34,8 +33,6 @@ export default function WeatherWidget() {
   const [locationInput, setLocationInput] = useState('');
   const [pincodeInput, setPincodeInput] = useState('');
   const { userProfile, updateUserProfile, isLoading: isProfileLoading } = useUserProfile();
-  
-  const bgImage = PlaceHolderImages.find(p => p.id === 'login-background');
   
   useEffect(() => {
     // This effect runs once when the component mounts and user profile is loaded
@@ -122,47 +119,36 @@ export default function WeatherWidget() {
         }
         const CurrentWeatherIcon = weatherIcons[weather.condition] || SunIcon;
         return (
-            <div className="relative text-white">
-                {bgImage && (
-                    <Image
-                    src={bgImage.imageUrl}
-                    alt={bgImage.description}
-                    fill
-                    className="object-cover -z-10 rounded-lg brightness-50"
-                    data-ai-hint={bgImage.imageHint}
-                    />
-                )}
-                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80 rounded-lg -z-9" />
-
+            <div className="relative text-foreground">
                 <div className='p-6 relative z-10 space-y-8'>
                     <div className='flex justify-between items-start'>
                         <div>
                             <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
-                            <CardDescription className='text-white/80'>{weather.district} - {weather.pincode}</CardDescription>
+                            <CardDescription className='text-muted-foreground font-semibold'>{weather.district} - {weather.pincode}</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={resetWidget} className='text-white hover:bg-white/10 hover:text-white'>
+                        <Button variant="ghost" size="sm" onClick={resetWidget}>
                             Change
                         </Button>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-6 justify-between">
                         <div className="flex items-center gap-4">
-                            <CurrentWeatherIcon className="w-20 h-20" />
+                            <CurrentWeatherIcon className="w-20 h-20 text-primary" />
                             <div>
                             <p className="text-7xl font-bold">{weather.currentTemp}°</p>
-                            <p className="text-white/80 font-medium">{weather.condition}</p>
+                            <p className="text-muted-foreground font-medium">{weather.condition}</p>
                             </div>
                         </div>
                         <div className="text-left sm:text-right">
                            <p className="text-lg">Feels like {weather.feelsLike}°</p>
-                           <p className="text-white/80">Wind: {weather.windSpeed} km/h</p>
-                           <p className="text-white/80">Humidity: {weather.humidity}%</p>
+                           <p className="text-muted-foreground">Wind: {weather.windSpeed} km/h</p>
+                           <p className="text-muted-foreground">Humidity: {weather.humidity}%</p>
                         </div>
                     </div>
                     
                     {weather.hourlyForecast && weather.hourlyForecast.length > 0 && (
                         <div>
-                            <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">24-Hour Forecast</h3>
+                            <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-4">24-Hour Forecast</h3>
                             <Carousel opts={{ align: "start" }} className="w-full">
                                 <CarouselContent>
                                     {weather.hourlyForecast.map((hour, index) => (
@@ -171,15 +157,15 @@ export default function WeatherWidget() {
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
-                                <CarouselPrevious className='-left-4 text-white bg-black/30 hover:bg-black/50 border-white/30 hover:text-white' />
-                                <CarouselNext className='-right-4 text-white bg-black/30 hover:bg-black/50 border-white/30 hover:text-white' />
+                                <CarouselPrevious className='-left-4' />
+                                <CarouselNext className='-right-4' />
                             </Carousel>
                         </div>
                     )}
 
 
                      <div>
-                    <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">7-Day Forecast</h3>
+                    <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-4">7-Day Forecast</h3>
                     <div className="space-y-2">
                         {weather.forecast.map((day, index) => {
                           const DayIcon = weatherIcons[day.condition] || SunIcon;
@@ -254,7 +240,7 @@ export default function WeatherWidget() {
   }
 
   return (
-     <Card className="overflow-hidden">
+     <Card className="overflow-hidden bg-card">
       {renderContent()}
     </Card>
   );
@@ -262,13 +248,13 @@ export default function WeatherWidget() {
 
 function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
   return (
-    <div className="flex justify-between items-center text-base font-medium p-2 rounded-md hover:bg-white/10 transition-colors">
+    <div className="flex justify-between items-center text-base font-medium p-2 rounded-md hover:bg-muted/50 transition-colors">
         <span className="w-1/3">{day.day}</span>
-        <div className="w-1/3 flex items-center justify-center gap-2">
-           {day.precipitationChance > 0 && <span className='text-sm text-blue-300'>{day.precipitationChance}%</span>}
+        <div className="w-1/3 flex items-center justify-center gap-2 text-primary">
+           {day.precipitationChance > 0 && <span className='text-sm text-blue-500 font-semibold'>{day.precipitationChance}%</span>}
             <DayIcon className="w-6 h-6" />
         </div>
-        <span className="w-1/3 text-right">{day.maxTemp}° / {day.minTemp}°</span>
+        <span className="w-1/3 text-right text-muted-foreground">{day.maxTemp}° / {day.minTemp}°</span>
     </div>
   );
 }
@@ -277,12 +263,12 @@ function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<R
 function HourlyForecastCard({ hour }: { hour: HourlyForecast }) {
   const HourIcon = weatherIcons[hour.condition] || SunIcon;
   return (
-    <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-white/10 text-center">
-      <p className="text-sm font-medium">{hour.time}</p>
-      <HourIcon className="w-8 h-8" />
+    <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/40 text-center border">
+      <p className="text-sm font-medium text-muted-foreground">{hour.time}</p>
+      <HourIcon className="w-8 h-8 text-primary" />
       <p className="text-lg font-bold">{hour.temp}°</p>
       {hour.rainProbability > 0 && (
-        <div className="flex items-center gap-1 text-xs text-blue-300">
+        <div className="flex items-center gap-1 text-xs text-blue-500 font-semibold">
           <CloudRainIcon className="w-3 h-3" />
           <span>{hour.rainProbability}%</span>
         </div>
