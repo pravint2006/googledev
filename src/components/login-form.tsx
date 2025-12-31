@@ -78,7 +78,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         await sendPasswordResetEmail(auth, resetEmail);
         toast({
             title: "Password Reset Email Sent",
-            description: `If an account exists for ${resetEmail}, you will receive an email with instructions to reset your password. Please check your spam folder if you do not see it.`,
+            description: `If an account exists for ${resetEmail}, you will receive an email with instructions. Please check your spam folder if you do not see it.`,
         });
         setIsResetDialogOpen(false); // Close dialog on success
     } catch (error) {
