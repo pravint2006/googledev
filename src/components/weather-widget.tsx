@@ -1,14 +1,19 @@
+
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useJsApiLoader, Autocomplete, Libraries } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
-import { Loader2, Wind, Droplets, AlertCircle } from 'lucide-react';
+import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
+import { AlertTriangle } from 'lucide-react';
+
+const libraries: Libraries = ['places'];
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -23,6 +28,15 @@ export default function WeatherWidget() {
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
   
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey || "",
+    libraries,
+  });
+
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
   const fetchWeatherForLocation = async (location: string) => {
     if (!location) {
       setError("Please enter a location.");
@@ -46,7 +60,45 @@ export default function WeatherWidget() {
       fetchWeatherForLocation(locationInput);
   }
 
+  const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    const place = autocompleteRef.current?.getPlace();
+    const location = place?.formatted_address || place?.name;
+    if (location) {
+      setLocationInput(location);
+      fetchWeatherForLocation(location);
+    }
+  };
+
   if (loading) {
+    return <WeatherLoadingSkeleton />;
+  }
+
+  if (loadError) {
+    return (
+        <Card>
+             <CardHeader>
+                <CardTitle className="font-headline">Weather Forecast</CardTitle>
+                <CardDescription>Enter a location to see the weather.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Map Component Error</AlertTitle>
+                    <AlertDescription>
+                        The location autocomplete failed to load. This is likely due to an issue with the Google Maps API key configuration in your project.
+                        <p className='font-bold mt-2'>Please ensure the "Places API" is enabled and a billing account is linked in your Google Cloud project.</p>
+                    </AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
+    )
+  }
+
+  if (!isLoaded) {
     return <WeatherLoadingSkeleton />;
   }
   
@@ -66,12 +118,14 @@ export default function WeatherWidget() {
                 )}
                 
                 <form onSubmit={handleFormSubmit} className="flex gap-2">
-                  <Input 
-                      value={locationInput}
-                      onChange={(e) => setLocationInput(e.target.value)}
-                      placeholder="e.g., Chennai, India"
-                      className="w-full"
-                  />
+                  <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+                    <Input 
+                        value={locationInput}
+                        onChange={(e) => setLocationInput(e.target.value)}
+                        placeholder="e.g., Thungavi"
+                        className="w-full"
+                    />
+                  </Autocomplete>
                   <Button type="submit">Get Weather</Button>
                 </form>
             </CardContent>
@@ -104,6 +158,14 @@ export default function WeatherWidget() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm self-start sm:self-center border p-4 rounded-lg bg-background/50">
+             <div className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-muted-foreground" />
+                <span>{weather.district}</span>
+             </div>
+             <div className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <span>{weather.pincode}</span>
+             </div>
              <div className="flex items-center gap-2">
                 <Wind className="h-5 w-5 text-muted-foreground" />
                 <span>{weather.windSpeed} km/h</span>
@@ -153,6 +215,8 @@ function WeatherLoadingSkeleton() {
                         </div>
                     </div>
                     <div className="space-y-2">
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-6 w-32" />
                         <Skeleton className="h-6 w-32" />
                         <Skeleton className="h-6 w-32" />
                     </div>

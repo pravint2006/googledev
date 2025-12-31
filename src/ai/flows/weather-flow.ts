@@ -24,6 +24,8 @@ const DailyForecastSchema = z.object({
 
 const WeatherOutputSchema = z.object({
   city: z.string().describe("The city for which the weather is being reported."),
+  district: z.string().describe('The district or county for the location.'),
+  pincode: z.string().describe('The postal code or pincode for the location.'),
   currentTemp: z.number().describe('The current temperature in Celsius.'),
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
@@ -47,7 +49,7 @@ const prompt = ai.definePrompt({
   
   Important rules:
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather.
-  - The city name in the output MUST be the full, unambiguous name of the location, including state/region and country if applicable (e.g., "Paris, France" or "Thungavi, Tamil Nadu, India").
+  - The city name, district, and pincode in the output MUST be the full, unambiguous name of the location, including state/region and country if applicable (e.g., City: "Paris, France", District: "Paris", Pincode: "75001" or City: "Thungavi, Tamil Nadu, India", District: "Coimbatore", Pincode: "641653").
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. So the forecast should be for Monday, Tuesday, and Wednesday.
   - Make the weather conditions varied and interesting. For example, don't make it "Sunny" every day.
