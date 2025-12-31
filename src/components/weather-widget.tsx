@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
 import { Loader2, Wind, Droplets, AlertCircle } from 'lucide-react';
@@ -9,7 +9,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -18,21 +17,12 @@ const weatherIcons = {
   Stormy: CloudLightningIcon,
 };
 
-const libraries: ('places')[] = ['places'];
-
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
   
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  });
-
   const fetchWeatherForLocation = async (location: string) => {
     if (!location) {
       setError("Please enter a location.");
@@ -51,56 +41,13 @@ export default function WeatherWidget() {
     }
   };
   
-  const handlePlaceChanged = () => {
-    if (autocompleteRef.current) {
-        const place = autocompleteRef.current.getPlace();
-        if (place && place.formatted_address) {
-            setLocationInput(place.formatted_address);
-            fetchWeatherForLocation(place.formatted_address);
-        }
-    }
-  };
-
   const handleFormSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       fetchWeatherForLocation(locationInput);
   }
 
-  const onLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
-    autocompleteRef.current = autocomplete;
-  }, []);
-
-  const onUnmount = useCallback(() => {
-    autocompleteRef.current = null;
-  }, []);
-
-
   if (loading) {
     return <WeatherLoadingSkeleton />;
-  }
-  
-  if (loadError) {
-      return (
-          <Card>
-              <CardHeader>
-                  <CardTitle className="font-headline">Weather Forecast</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Google Maps API Error</AlertTitle>
-                      <AlertDescription>
-                          <p>The location autocomplete feature could not be loaded. This is likely due to one of two reasons:</p>
-                          <ol className="list-decimal list-inside mt-2 space-y-1">
-                              <li>The <strong>Places API</strong> is not enabled in your Google Cloud project.</li>
-                              <li>Your project does not have an active <strong>billing account</strong> linked to it.</li>
-                          </ol>
-                          <p className='mt-2'>Please visit the Google Cloud Console to enable the Places API and ensure a billing account is active.</p>
-                      </AlertDescription>
-                  </Alert>
-              </CardContent>
-          </Card>
-      );
   }
   
   if (!weather) {
@@ -118,24 +65,15 @@ export default function WeatherWidget() {
                     </div>
                 )}
                 
-                {isLoaded ? (
-                    <form onSubmit={handleFormSubmit} className="flex gap-2">
-                        <Autocomplete
-                          onLoad={onLoad}
-                          onUnmount={onUnmount}
-                          onPlaceChanged={handlePlaceChanged}
-                          options={{ types: ['(cities)'] }}
-                        >
-                          <Input 
-                              value={locationInput}
-                              onChange={(e) => setLocationInput(e.target.value)}
-                              placeholder="e.g., Chennai, India"
-                              className="w-full"
-                          />
-                        </Autocomplete>
-                        <Button type="submit">Get Weather</Button>
-                    </form>
-                ) : <Skeleton className="h-10 w-full" />}
+                <form onSubmit={handleFormSubmit} className="flex gap-2">
+                  <Input 
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      placeholder="e.g., Chennai, India"
+                      className="w-full"
+                  />
+                  <Button type="submit">Get Weather</Button>
+                </form>
             </CardContent>
         </Card>
      )
