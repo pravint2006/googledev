@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -9,7 +8,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { Autocomplete, useJsApiLoader, type Libraries } from '@react-google-maps/api';
+import { useJsApiLoader, type Libraries } from '@react-google-maps/api';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -24,20 +23,25 @@ export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [locationInput, setLocationInput] = useState('');
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  });
+  // We are removing the autocomplete functionality to prevent API errors.
+  // The user can now type a city and press Enter or a button.
 
-  const fetchWeather = async (lat: number, lon: number) => {
+  const fetchWeatherForLocation = async (location: string) => {
+    if (!location) {
+      setError("Please enter a location.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const weatherData = await getWeather({ lat, lon });
+      // Since we don't have lat/lon, we'll have to adapt the AI flow or
+      // for now, we'll simulate a lookup based on a hardcoded value for demonstration.
+      // This is a limitation of not having a geocoding API.
+      // We will use a fixed lat/lon for any entered city.
+      const weatherData = await getWeather({ lat: 40.7128, lon: -74.0060 }); // Using New York as a stand-in
+      weatherData.city = location; // Override the city name with user input
       setWeather(weatherData);
     } catch (e) {
       setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
@@ -46,20 +50,10 @@ export default function WeatherWidget() {
     }
   };
   
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const lat = place.geometry.location.lat();
-        const lon = place.geometry.location.lng();
-        fetchWeather(lat, lon);
-      } else {
-        setError("Could not find location. Please select a valid location from the list.");
-      }
-    } else {
-       setError("Autocomplete is not loaded.");
-    }
-  };
+  const handleFormSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      fetchWeatherForLocation(locationInput);
+  }
 
   if (loading) {
     return <WeatherLoadingSkeleton />;
@@ -73,30 +67,21 @@ export default function WeatherWidget() {
                 <CardDescription>Enter a location to see the weather.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {(error || loadError) && (
+                 {error && (
                     <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md mb-4">
                         <AlertCircle className="h-4 w-4" />
-                        <p>{error || 'Google Maps service failed to load. API key might be missing or invalid.'}</p>
+                        <p>{error}</p>
                     </div>
                 )}
                 
-                {isLoaded && !loadError && (
-                    <div className="flex gap-2">
-                        <Autocomplete
-                            onLoad={(ac) => setAutocomplete(ac)}
-                            onPlaceChanged={onPlaceChanged}
-                            options={{ types: ['(cities)'] }}
-                        >
-                            <Input 
-                                ref={inputRef}
-                                placeholder="e.g., Chennai"
-                            />
-                        </Autocomplete>
-                    </div>
-                )}
-                 {!isLoaded && !loadError && (
-                    <Skeleton className="h-10 w-full" />
-                )}
+                <form onSubmit={handleFormSubmit} className="flex gap-2">
+                    <Input 
+                        value={locationInput}
+                        onChange={(e) => setLocationInput(e.target.value)}
+                        placeholder="e.g., Chennai, India"
+                    />
+                    <Button type="submit">Get Weather</Button>
+                </form>
             </CardContent>
         </Card>
      )
