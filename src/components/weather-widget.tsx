@@ -1,13 +1,15 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
-import { Loader2, MapPin, Wind, Droplets, AlertCircle } from 'lucide-react';
+import { Loader2, Wind, Droplets, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
+import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -20,7 +22,14 @@ export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manualLocation, setManualLocation] = useState('');
+  
+  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ['places'],
+  });
 
   const fetchWeather = async (lat: number, lon: number) => {
     setLoading(true);
@@ -35,31 +44,18 @@ export default function WeatherWidget() {
     }
   };
   
-  // This function is a placeholder for a proper geocoding service
-  const geocodeManualLocation = () => {
-    // For this example, we'll use a simplified mapping.
-    // A real implementation would use a geocoding API.
-    const locations: Record<string, {lat: number, lon: number}> = {
-        'new york': { lat: 40.7128, lon: -74.0060 },
-        'london': { lat: 51.5072, lon: -0.1276 },
-        'tokyo': { lat: 35.6762, lon: 139.6503 },
-        'sydney': { lat: -33.8688, lon: 151.2093 },
-        'chennai': { lat: 13.0827, lon: 80.2707 },
-    };
-    const location = locations[manualLocation.toLowerCase()];
-    if (location) {
-        fetchWeather(location.lat, location.lon);
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lon = place.geometry.location.lng();
+        fetchWeather(lat, lon);
+      } else {
+        setError("Could not find location. Please select a valid location from the list.");
+      }
     } else {
-        setError(`Could not find coordinates for "${manualLocation}". Please try a major city like London or Tokyo.`);
-        setLoading(false);
-    }
-  }
-
-  const handleManualLocationSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualLocation) {
-        setLoading(true);
-        geocodeManualLocation();
+       setError("Autocomplete is not loaded.");
     }
   };
 
@@ -75,20 +71,30 @@ export default function WeatherWidget() {
                 <CardDescription>Enter a location to see the weather.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {error && (
+                 {(error || loadError) && (
                     <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md mb-4">
                         <AlertCircle className="h-4 w-4" />
-                        <p>{error}</p>
+                        <p>{error || 'Google Maps service failed to load. API key might be missing or invalid.'}</p>
                     </div>
                 )}
-                <form onSubmit={handleManualLocationSubmit} className="flex gap-2">
-                    <Input 
-                        placeholder="e.g., Chennai"
-                        value={manualLocation}
-                        onChange={(e) => setManualLocation(e.target.value)}
-                    />
-                    <Button type="submit">Get Weather</Button>
-                </form>
+                
+                {isLoaded && !loadError && (
+                    <div className="flex gap-2">
+                        <Autocomplete
+                            onLoad={(ac) => setAutocomplete(ac)}
+                            onPlaceChanged={onPlaceChanged}
+                            options={{ types: ['(cities)'] }}
+                        >
+                            <Input 
+                                ref={inputRef}
+                                placeholder="e.g., Chennai"
+                            />
+                        </Autocomplete>
+                    </div>
+                )}
+                 {!isLoaded && !loadError && (
+                    <Skeleton className="h-10 w-full" />
+                )}
             </CardContent>
         </Card>
      )
@@ -99,8 +105,15 @@ export default function WeatherWidget() {
   return (
     <Card className="bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-900 dark:via-slate-800 dark:to-emerald-950">
       <CardHeader>
-        <CardTitle className="font-headline">Weather in {weather.city}</CardTitle>
-        <CardDescription>Current conditions and 3-day forecast.</CardDescription>
+        <div className='flex justify-between items-start'>
+          <div>
+            <CardTitle className="font-headline">Weather in {weather.city}</CardTitle>
+            <CardDescription>Current conditions and 3-day forecast.</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setWeather(null)}>
+            Change Location
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-6 justify-between">
