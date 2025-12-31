@@ -11,5 +11,6 @@ export const ai = genkit({
       },
     }),
   ],
-  model: 'googleai/gemini-2.5-flash',
+  // The model is inherited from the plugin, specifying it here is not needed
+  // and can cause errors if the name is not perfectly matched.
 });

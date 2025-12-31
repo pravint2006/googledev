@@ -63,19 +63,14 @@ const prompt = ai.definePrompt({
   name: 'getWeatherPrompt',
   input: { schema: WeatherInputSchema },
   output: { schema: WeatherOutputSchema },
-  prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data.
+  prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data based on the provided location.
   
-  Based on the provided input location (either a name/pincode or lat/lon), provide a realistic weather forecast.
+  You MUST invent plausible weather data. Do not look up real-time weather.
   
-  CRITICAL RULES:
-  - You MUST invent plausible weather data. Do not look up real-time weather. This is for a simulation.
-  - The 'city' in the output must be the full name of the location (e.g., "Thungavi, Tamil Nadu, India").
-  - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
-  - Return a 24-hour forecast starting from the next hour.
-  - Return a 7-day forecast starting from tomorrow.
-  - The days of the week should be Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and Sunday.
-  - For each hour and day, you MUST provide all fields defined in the schema.
-  - The 'feelsLike' temperature should be plausible based on current temperature, humidity, and wind speed.
+  If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
+  
+  Return a 24-hour forecast starting from the next hour.
+  Return a 7-day forecast starting from tomorrow.
   `,
 });
 
@@ -90,4 +85,3 @@ const getWeatherFlow = ai.defineFlow(
     return output!;
   }
 );
-
