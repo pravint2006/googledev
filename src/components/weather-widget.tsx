@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
 import { Loader2, Wind, Droplets, AlertCircle } from 'lucide-react';
@@ -16,11 +17,20 @@ const weatherIcons = {
   Stormy: CloudLightningIcon,
 };
 
+const libraries: ('places')[] = ['places'];
+
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
+  
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+  });
 
   const fetchWeatherForLocation = async (location: string) => {
     if (!location) {
@@ -40,13 +50,49 @@ export default function WeatherWidget() {
     }
   };
   
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        if (place && place.formatted_address) {
+            setLocationInput(place.formatted_address);
+            fetchWeatherForLocation(place.formatted_address);
+        }
+    }
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       fetchWeatherForLocation(locationInput);
   }
 
+  const onLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  }, []);
+
+  const onUnmount = useCallback(() => {
+    autocompleteRef.current = null;
+  }, []);
+
+
   if (loading) {
     return <WeatherLoadingSkeleton />;
+  }
+  
+  if (loadError) {
+      return (
+          <Card>
+              <CardHeader>
+                  <CardTitle className="font-headline">Weather Forecast</CardTitle>
+                  <CardDescription>Enter a location to see the weather.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>Could not load Google Maps Autocomplete. Please ensure your API key is correct and the "Places API" is enabled in your Google Cloud console.</p>
+                  </div>
+              </CardContent>
+          </Card>
+      );
   }
   
   if (!weather) {
@@ -64,14 +110,24 @@ export default function WeatherWidget() {
                     </div>
                 )}
                 
-                <form onSubmit={handleFormSubmit} className="flex gap-2">
-                    <Input 
-                        value={locationInput}
-                        onChange={(e) => setLocationInput(e.target.value)}
-                        placeholder="e.g., Chennai, India"
-                    />
-                    <Button type="submit">Get Weather</Button>
-                </form>
+                {isLoaded ? (
+                    <form onSubmit={handleFormSubmit} className="flex gap-2">
+                        <Autocomplete
+                          onLoad={onLoad}
+                          onUnmount={onUnmount}
+                          onPlaceChanged={handlePlaceChanged}
+                          options={{ types: ['(cities)'] }}
+                        >
+                          <Input 
+                              value={locationInput}
+                              onChange={(e) => setLocationInput(e.target.value)}
+                              placeholder="e.g., Chennai, India"
+                              className="w-full"
+                          />
+                        </Autocomplete>
+                        <Button type="submit">Get Weather</Button>
+                    </form>
+                ) : <Skeleton className="h-10 w-full" />}
             </CardContent>
         </Card>
      )
@@ -87,7 +143,7 @@ export default function WeatherWidget() {
             <CardTitle className="font-headline">Weather in {weather.city}</CardTitle>
             <CardDescription>Current conditions and 3-day forecast.</CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setWeather(null)}>
+          <Button variant="ghost" size="sm" onClick={() => { setWeather(null); setLocationInput(''); }}>
             Change Location
           </Button>
         </div>
