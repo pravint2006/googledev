@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Farm": {
@@ -107,8 +108,7 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous",
-      "google"
+      "anonymous"
     ]
   },
   "firestore": {

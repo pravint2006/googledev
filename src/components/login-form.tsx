@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, type AuthError } from 'firebase/auth';
+import { signInWithEmailAndPassword, type AuthError } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Separator } from './ui/separator';
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -22,23 +21,23 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
-  const [isEmailLoading, setIsEmailLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth) return;
-    setIsEmailLoading(true);
+    setIsLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
-      if (error instanceof Error && (error as any).code) {
-        switch ((error as any).code) {
+      const authError = error as AuthError;
+      if (authError.code) {
+        switch (authError.code) {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
@@ -48,7 +47,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             errorMessage = 'Please enter a valid email address.';
             break;
           default:
-            errorMessage = 'Login failed. Please try again later.';
+            errorMessage = authError.message || 'Login failed. Please try again later.';
         }
       }
       toast({
@@ -57,29 +56,9 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         description: errorMessage,
       });
     } finally {
-      setIsEmailLoading(false);
+      setIsLoading(false);
     }
   };
-
-  const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      router.push('/dashboard');
-    } catch (error) {
-       const authError = error as AuthError;
-       toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Error',
-        description: authError.message || 'Could not sign in with Google. Please try again.',
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
 
   return (
     <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
@@ -91,45 +70,6 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <CardDescription>Sign in to manage your farms.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={handleGoogleSignIn}
-          disabled={isGoogleLoading || isEmailLoading}
-        >
-          {isGoogleLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <svg
-              className="mr-2 h-4 w-4"
-              aria-hidden="true"
-              focusable="false"
-              data-prefix="fab"
-              data-icon="google"
-              role="img"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 488 512"
-            >
-              <path
-                fill="currentColor"
-                d="M488 261.8C488 403.3 381.7 512 244 512 109.8 512 0 402.2 0 261.8S109.8 11.6 244 11.6C303.6 11.6 354.9 33.3 391.1 65.6l-54.3 50.8C302.1 82.7 274.2 68.1 244 68.1c-106.1 0-192.2 86.1-192.2 192.1s86.1 192.1 192.2 192.1c121.2 0 167.3-89.4 172.9-136.5H244V261.8h244z"
-              ></path>
-            </svg>
-          )}
-          Sign in with Google
-        </Button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
-        </div>
-
         <form onSubmit={handleEmailSignIn} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email-login">Email</Label>
@@ -140,7 +80,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isEmailLoading || isGoogleLoading}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -151,16 +91,16 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={isEmailLoading || isGoogleLoading}
+              disabled={isLoading}
             />
           </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90"
-            disabled={isEmailLoading || isGoogleLoading}
+            disabled={isLoading}
           >
-            {isEmailLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEmailLoading ? 'Signing In...' : 'Sign In'}
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
       </CardContent>
