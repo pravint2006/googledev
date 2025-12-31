@@ -7,10 +7,12 @@ import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon } f
 import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Waves } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { type WeatherOutput, getWeather, type DailyForecast } from '@/ai/flows/weather-flow';
+import { type WeatherOutput, getWeather, type DailyForecast, type HourlyForecast } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -117,18 +119,18 @@ export default function WeatherWidget() {
                 )}
                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80 rounded-lg -z-9" />
 
-                <div className='p-6 relative z-10'>
+                <div className='p-6 relative z-10 space-y-8'>
                     <div className='flex justify-between items-start'>
                         <div>
                             <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
-                            <CardDescription className='text-white/80'>{weather.pincode}</CardDescription>
+                            <CardDescription className='text-white/80'>{weather.district} - {weather.pincode}</CardDescription>
                         </div>
                         <Button variant="ghost" size="sm" onClick={resetWidget} className='text-white hover:bg-white/10 hover:text-white'>
                             Change
                         </Button>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-6 justify-between my-8">
+                    <div className="flex flex-col sm:flex-row gap-6 justify-between">
                         <div className="flex items-center gap-4">
                             <CurrentWeatherIcon className="w-20 h-20" />
                             <div>
@@ -136,12 +138,30 @@ export default function WeatherWidget() {
                             <p className="text-white/80 font-medium">{weather.condition}</p>
                             </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                            <p className="text-lg">Feels like {weather.feelsLike}°</p>
                            <p className="text-white/80">Wind: {weather.windSpeed} km/h</p>
                            <p className="text-white/80">Humidity: {weather.humidity}%</p>
                         </div>
                     </div>
+                    
+                    {weather.hourlyForecast && weather.hourlyForecast.length > 0 && (
+                        <div>
+                            <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">Hourly Forecast</h3>
+                            <Carousel opts={{ align: "start" }} className="w-full">
+                                <CarouselContent>
+                                    {weather.hourlyForecast.map((hour, index) => (
+                                        <CarouselItem key={index} className="basis-1/4 sm:basis-1/5 lg:basis-1/6">
+                                            <HourlyForecastCard hour={hour} />
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                <CarouselPrevious className='-left-4 text-white bg-black/30 hover:bg-black/50 border-white/30 hover:text-white' />
+                                <CarouselNext className='-right-4 text-white bg-black/30 hover:bg-black/50 border-white/30 hover:text-white' />
+                            </Carousel>
+                        </div>
+                    )}
+
 
                      <div>
                     <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">3-Day Forecast</h3>
@@ -238,6 +258,23 @@ function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<R
   );
 }
 
+
+function HourlyForecastCard({ hour }: { hour: HourlyForecast }) {
+  const HourIcon = weatherIcons[hour.condition] || SunIcon;
+  return (
+    <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-white/10 text-center">
+      <p className="text-sm font-medium">{hour.time}</p>
+      <HourIcon className="w-8 h-8" />
+      <p className="text-lg font-bold">{hour.temp}°</p>
+      {hour.rainProbability > 0 && (
+        <div className="flex items-center gap-1 text-xs text-blue-300">
+          <CloudRainIcon className="w-3 h-3" />
+          <span>{hour.rainProbability}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function WeatherLoadingSkeleton() {
     return (

@@ -31,6 +31,15 @@ const DailyForecastSchema = z.object({
 });
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 
+const HourlyForecastSchema = z.object({
+    time: z.string().describe('The specific hour for the forecast (e.g., "3 PM", "10 AM").'),
+    temp: z.number().describe('The temperature at that hour in Celsius.'),
+    condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition at that hour.'),
+    rainProbability: z.number().min(0).max(100).describe('The percentage probability of rain at that hour.')
+});
+export type HourlyForecast = z.infer<typeof HourlyForecastSchema>;
+
+
 const WeatherOutputSchema = z.object({
   city: z.string().describe("The city for which the weather is being reported, including state/region and country."),
   district: z.string().describe('The district or county for the location.'),
@@ -40,6 +49,7 @@ const WeatherOutputSchema = z.object({
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
+  hourlyForecast: z.array(HourlyForecastSchema).describe('A 12-hour weather forecast.'),
   forecast: z.array(DailyForecastSchema).describe('A 3-day weather forecast.'),
 });
 export type WeatherOutput = z.infer<typeof WeatherOutputSchema>;
@@ -65,9 +75,11 @@ const prompt = ai.definePrompt({
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather. This is for a simulation.
   - The 'city' field in the output MUST be the full, unambiguous name of the location (e.g., "Thungavi, Tamil Nadu, India").
   - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
+  - Return a 12-hour forecast starting from the next hour.
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. The forecast should be for Monday, Tuesday, and Wednesday.
-  - For each day in the forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, uvIndex, and precipitationChance.
+  - For each hour in the hourly forecast, you must provide all fields: time, temp, condition, and rainProbability.
+  - For each day in the daily forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, uvIndex, and precipitationChance.
   - The 'feelsLike' temperature should be a plausible value based on the current temperature, humidity, and wind speed.
   - Make the weather conditions and precipitation chances varied and interesting across the days.
   `,
