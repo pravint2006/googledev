@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, Libraries } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -14,12 +14,14 @@ interface FarmMapProps {
   center: GeoPoint;
 }
 
+const libraries: Libraries = ['places'];
+
 export default function FarmMap({ valves, center }: FarmMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || "",
-    libraries: ['places'],
+    libraries,
   });
   
   const mapCenter = useMemo(() => ({

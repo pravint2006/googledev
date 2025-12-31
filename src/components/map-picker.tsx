@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Libraries } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { MapPin, AlertTriangle, Loader2, Save } from 'lucide-react';
@@ -19,6 +19,8 @@ interface MapPickerProps {
   isSubmitting: boolean;
   initialCenter?: { lat: number; lng: number };
 }
+
+const libraries: Libraries = ['places'];
 
 export default function MapPicker({
   valves: initialValves,
@@ -37,7 +39,7 @@ export default function MapPicker({
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || "fallback-key-for-dev",
-    libraries: ['places'],
+    libraries,
   });
 
   // Effect to reset valves if the total count changes (e.g., user goes back and changes it)

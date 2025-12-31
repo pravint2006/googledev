@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { Autocomplete, useJsApiLoader, type Libraries } from '@react-google-maps/api';
 
 const weatherIcons = {
   Sunny: SunIcon,
@@ -17,6 +17,8 @@ const weatherIcons = {
   Rainy: CloudRainIcon,
   Stormy: CloudLightningIcon,
 };
+
+const libraries: Libraries = ['places'];
 
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
@@ -28,7 +30,7 @@ export default function WeatherWidget() {
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ['places'],
+    libraries,
   });
 
   const fetchWeather = async (lat: number, lon: number) => {
