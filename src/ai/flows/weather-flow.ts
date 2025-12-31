@@ -50,7 +50,7 @@ const prompt = ai.definePrompt({
   Important rules:
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather.
   - The city name, district, and pincode in the output MUST be the full, unambiguous name of the location, including state/region and country if applicable.
-  - If the user asks for "Thungavi, Tamil Nadu, India", you MUST use "Coimbatore" as the district and "641653" as the pincode. For other locations, provide a plausible district and pincode.
+  - If the user asks for "Thungavi, Tamil Nadu, India", you MUST use "Tirupur" as the district and "642203" as the pincode. For other locations, provide a plausible district and pincode.
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. So the forecast should be for Monday, Tuesday, and Wednesday.
   - Make the weather conditions varied and interesting. For example, don't make it "Sunny" every day.
