@@ -55,7 +55,7 @@ export default function WeatherWidget() {
         setWeather(weatherData);
         setView('weather');
         // Save the successfully fetched location to the user's profile
-        updateUserProfile({ lastWeatherLocation: input });
+        updateUserProfile({ lastWeatherLocation: { ...input, location: weatherData.city } });
       })
       .catch(e => {
         console.error(e);
@@ -240,7 +240,7 @@ export default function WeatherWidget() {
   }
 
   return (
-     <Card className="overflow-hidden bg-card">
+     <Card className="overflow-hidden">
       {renderContent()}
     </Card>
   );
