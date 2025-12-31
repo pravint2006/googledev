@@ -49,8 +49,8 @@ const WeatherOutputSchema = z.object({
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
-  hourlyForecast: z.array(HourlyForecastSchema).describe('A 12-hour weather forecast.'),
-  forecast: z.array(DailyForecastSchema).describe('A 3-day weather forecast.'),
+  hourlyForecast: z.array(HourlyForecastSchema).describe('A 24-hour weather forecast.'),
+  forecast: z.array(DailyForecastSchema).describe('A 7-day weather forecast.'),
 });
 export type WeatherOutput = z.infer<typeof WeatherOutputSchema>;
 
@@ -75,9 +75,9 @@ const prompt = ai.definePrompt({
   - You MUST invent plausible weather data. Do not attempt to look up real-time weather. This is for a simulation.
   - The 'city' field in the output MUST be the full, unambiguous name of the location (e.g., "Thungavi, Tamil Nadu, India").
   - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
-  - Return a 12-hour forecast starting from the next hour.
-  - Return a 3-day forecast starting from tomorrow.
-  - Today is Sunday. The forecast should be for Monday, Tuesday, and Wednesday.
+  - Return a 24-hour forecast starting from the next hour.
+  - Return a 7-day forecast starting from tomorrow.
+  - Today is Sunday. The forecast should be for Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and the following Sunday.
   - For each hour in the hourly forecast, you must provide all fields: time, temp, condition, and rainProbability.
   - For each day in the daily forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, uvIndex, and precipitationChance.
   - The 'feelsLike' temperature should be a plausible value based on the current temperature, humidity, and wind speed.

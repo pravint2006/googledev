@@ -147,7 +147,7 @@ export default function WeatherWidget() {
                     
                     {weather.hourlyForecast && weather.hourlyForecast.length > 0 && (
                         <div>
-                            <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">Hourly Forecast</h3>
+                            <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">24-Hour Forecast</h3>
                             <Carousel opts={{ align: "start" }} className="w-full">
                                 <CarouselContent>
                                     {weather.hourlyForecast.map((hour, index) => (
@@ -164,7 +164,7 @@ export default function WeatherWidget() {
 
 
                      <div>
-                    <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">3-Day Forecast</h3>
+                    <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">7-Day Forecast</h3>
                     <div className="space-y-2">
                         {weather.forecast.map((day, index) => {
                           const DayIcon = weatherIcons[day.condition] || SunIcon;
