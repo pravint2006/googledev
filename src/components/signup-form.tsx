@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createUserWithEmailAndPassword, updateProfile, type AuthError } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, type AuthError, sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,10 +58,11 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         await updateProfile(userCredential.user, {
           displayName: displayName,
         });
+        await sendEmailVerification(userCredential.user);
       }
       toast({
-        title: 'Account Created!',
-        description: "You've been successfully signed up.",
+        title: 'Account Created! Please Verify Your Email.',
+        description: "We've sent a verification link to your email address. Please check your inbox and spam folder.",
       });
       router.push('/dashboard');
     } catch (error) {
