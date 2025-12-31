@@ -99,6 +99,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     }
   };
 
+  const openResetDialog = () => {
+    setResetEmail(email);
+    setIsResetDialogOpen(true);
+  };
+
 
   return (
     <>
@@ -127,7 +132,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <Label htmlFor="password-login">Password</Label>
-                    <Button variant="link" size="sm" type="button" className="p-0 h-auto text-xs" onClick={() => setIsResetDialogOpen(true)}>
+                    <Button variant="link" size="sm" type="button" className="p-0 h-auto text-xs" onClick={openResetDialog}>
                         Forgot password?
                     </Button>
                 </div>
