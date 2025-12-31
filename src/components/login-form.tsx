@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, type AuthError, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, type AuthError, sendPasswordResetEmail, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import { Checkbox } from './ui/checkbox';
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -25,6 +26,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
@@ -35,6 +37,10 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     setIsLoading(true);
 
     try {
+      // Set persistence based on the "Remember me" checkbox
+      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, persistence);
+
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error) {
@@ -144,6 +150,19 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
               />
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <label
+                    htmlFor="remember-me"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                    Remember me
+                </label>
             </div>
             <Button
               type="submit"
