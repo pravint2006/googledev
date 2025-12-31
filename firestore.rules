@@ -76,9 +76,9 @@ service cloud.firestore {
      * Validates the integrity of a Farm document on creation.
      * Ensures the document's internal ownerId matches the user path ID.
      */
-    function isValidNewFarm(userId) {
+    function isValidNewFarm(userId, farmId) {
       let data = request.resource.data;
-      return data.ownerId == userId && data.id == request.resource.id;
+      return data.ownerId == userId && data.id == farmId;
     }
 
     /**
@@ -132,38 +132,39 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidNewUser(userId);
       allow update: if isOwner(userId) && hasImmutableUserFields();
       allow delete: if isOwner(userId);
-    }
 
-    /**
-     * @description A user can manage the farms associated with their account.
-     * @path /users/{userId}/farms/{farmId}
-     * @allow (create) A user creates a new farm under their own profile: `create /users/user_abc/farms/farm_123` with auth.uid=`user_abc`.
-     * @deny (get) A user tries to read another user's farm data: `get /users/user_xyz/farms/farm_456` with auth.uid=`user_abc`.
-     * @deny (create) A user creates a farm with an incorrect internal ownerId: `create /users/user_abc/farms/farm_123` with data `{ ownerId: 'user_xyz' }`.
-     * @principle Restricts access to a user's own data tree using path-based ownership.
-     */
-    match /users/{userId}/farms/{farmId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidNewFarm(userId);
-      allow update: if isOwner(userId) && hasImmutableFarmFields();
-      allow delete: if isOwner(userId);
-    }
+      /**
+       * @description A user can manage the farms associated with their account.
+       * @path /users/{userId}/farms/{farmId}
+       * @allow (create) A user creates a new farm under their own profile: `create /users/user_abc/farms/farm_123` with auth.uid=`user_abc`.
+       * @allow (list) An authenticated user can list all of their own farms.
+       * @deny (get) A user tries to read another user's farm data: `get /users/user_xyz/farms/farm_456` with auth.uid=`user_abc`.
+       * @deny (create) A user creates a farm with an incorrect internal ownerId: `create /users/user_abc/farms/farm_123` with data `{ ownerId: 'user_xyz' }`.
+       * @principle Restricts access to a user's own data tree using path-based ownership.
+       */
+      match /farms/{farmId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidNewFarm(userId, farmId);
+        allow update: if isOwner(userId) && hasImmutableFarmFields();
+        allow delete: if isOwner(userId);
 
-    /**
-     * @description A user can manage the gate valves within one of their own farms.
-     * @path /users/{userId}/farms/{farmId}/gateValves/{gateValveId}
-     * @allow (list) A user lists all gate valves for their own farm: `list /users/user_abc/farms/farm_123/gateValves` with auth.uid=`user_abc`.
-     * @deny (get) A user tries to read a gate valve from another user's farm: `get /users/user_xyz/farms/farm_456/gateValves/gv_789` with auth.uid=`user_abc`.
-     * @deny (create) A user creates a gate valve with a mismatched internal farmId: `create .../gateValves/gv_789` with data `{ farmId: 'farm_other' }`.
-     * @principle Enforces deep, path-based ownership and validates relational integrity.
-     */
-    match /users/{userId}/farms/{farmId}/gateValves/{gateValveId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidNewGateValve(farmId, gateValveId);
-      allow update: if isOwner(userId) && hasImmutableGateValveFields();
-      allow delete: if isOwner(userId);
+        /**
+         * @description A user can manage the gate valves within one of their own farms.
+         * @path /users/{userId}/farms/{farmId}/gateValves/{gateValveId}
+         * @allow (list) A user lists all gate valves for their own farm: `list /users/user_abc/farms/farm_123/gateValves` with auth.uid=`user_abc`.
+         * @deny (get) A user tries to read a gate valve from another user's farm: `get /users/user_xyz/farms/farm_456/gateValves/gv_789` with auth.uid=`user_abc`.
+         * @deny (create) A user creates a gate valve with a mismatched internal farmId: `create .../gateValves/gv_789` with data `{ farmId: 'farm_other' }`.
+         * @principle Enforces deep, path-based ownership and validates relational integrity.
+         */
+        match /gateValves/{gateValveId} {
+          allow get: if isOwner(userId);
+          allow list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidNewGateValve(farmId, gateValveId);
+          allow update: if isOwner(userId) && hasImmutableGateValveFields();
+          allow delete: if isOwner(userId);
+        }
+      }
     }
   }
 }
