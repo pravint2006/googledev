@@ -3,15 +3,14 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon } from './weather-icons';
-import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Thermometer, Sun, Umbrella, Waves, ArrowDown, ArrowUp } from 'lucide-react';
+import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon } from './weather-icons';
+import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Waves } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { type WeatherOutput, getWeather, type DailyForecast } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
-
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import Image from 'next/image';
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -20,7 +19,7 @@ const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } =
   Stormy: CloudLightningIcon,
   'Partly Cloudy': CloudIcon,
   Thunderstorms: CloudLightningIcon,
-  Hazy: CloudIcon,
+  Hazy: CloudFogIcon,
 };
 
 type ViewState = 'initial' | 'form' | 'loading' | 'weather' | 'error';
@@ -31,6 +30,9 @@ export default function WeatherWidget() {
   const [error, setError] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState('');
   const [pincodeInput, setPincodeInput] = useState('');
+  
+  const bgImage = PlaceHolderImages.find(p => p.id === 'login-background');
+
 
   const resetWidget = () => {
     setWeather(null);
@@ -103,59 +105,57 @@ export default function WeatherWidget() {
         }
         const CurrentWeatherIcon = weatherIcons[weather.condition] || SunIcon;
         return (
-            <>
-                <CardHeader>
+            <div className="relative text-white">
+                {bgImage && (
+                    <Image
+                    src={bgImage.imageUrl}
+                    alt={bgImage.description}
+                    fill
+                    className="object-cover -z-10 rounded-lg brightness-50"
+                    data-ai-hint={bgImage.imageHint}
+                    />
+                )}
+                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80 rounded-lg -z-9" />
+
+                <div className='p-6 relative z-10'>
                     <div className='flex justify-between items-start'>
-                    <div>
-                        <CardTitle className="font-headline">Weather in {weather.city}</CardTitle>
-                        <CardDescription>Current conditions and 3-day forecast.</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={resetWidget}>
-                        Change Location
-                    </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex flex-col sm:flex-row gap-6 justify-between">
-                    <div className="flex items-center gap-4">
-                        <CurrentWeatherIcon className="w-20 h-20 text-primary" />
                         <div>
-                        <p className="text-6xl font-bold">{weather.currentTemp}°C</p>
-                        <p className="text-muted-foreground font-medium">{weather.condition}</p>
+                            <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
+                            <CardDescription className='text-white/80'>{weather.pincode}</CardDescription>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={resetWidget} className='text-white hover:bg-white/10 hover:text-white'>
+                            Change
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-6 justify-between my-8">
+                        <div className="flex items-center gap-4">
+                            <CurrentWeatherIcon className="w-20 h-20" />
+                            <div>
+                            <p className="text-7xl font-bold">{weather.currentTemp}°</p>
+                            <p className="text-white/80 font-medium">{weather.condition}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-lg">Feels like {weather.feelsLike}°</p>
+                           <p className="text-white/80">Wind: {weather.windSpeed} km/h</p>
+                           <p className="text-white/80">Humidity: {weather.humidity}%</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm self-start sm:self-center border p-4 rounded-lg bg-background/50">
-                        <div className="flex items-center gap-2">
-                            <Building className="h-5 w-5 text-muted-foreground" />
-                            <span>{weather.district}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-muted-foreground" />
-                            <span>{weather.pincode}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Wind className="h-5 w-5 text-muted-foreground" />
-                            <span>{weather.windSpeed} km/h</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Waves className="h-5 w-5 text-muted-foreground" />
-                            <span>{weather.humidity}% Humidity</span>
-                        </div>
-                    </div>
-                    </div>
-                    <div>
-                    <h3 className="font-semibold mb-2 text-foreground/80">3-Day Forecast</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                     <div>
+                    <h3 className="font-semibold mb-4 text-white/90 border-t border-white/20 pt-4">3-Day Forecast</h3>
+                    <div className="space-y-2">
                         {weather.forecast.map((day, index) => {
                           const DayIcon = weatherIcons[day.condition] || SunIcon;
                           return (
-                            <ForecastCard key={index} day={day} DayIcon={DayIcon} />
+                            <ForecastRow key={index} day={day} DayIcon={DayIcon} />
                           );
                         })}
                     </div>
                     </div>
-                </CardContent>
-            </>
+                </div>
+            </div>
         );
 
       case 'form':
@@ -219,42 +219,21 @@ export default function WeatherWidget() {
   }
 
   return (
-     <Card className="bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-900 dark:via-slate-800 dark:to-emerald-950">
+     <Card className="overflow-hidden">
       {renderContent()}
     </Card>
   );
 }
 
-function ForecastCard({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
+function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
   return (
-    <div className="p-4 rounded-lg bg-background/50 border space-y-4">
-        <div className="flex justify-between items-center">
-            <h4 className="font-bold">{day.day}</h4>
-            <DayIcon className="w-8 h-8 text-primary" />
+    <div className="flex justify-between items-center text-base font-medium p-2 rounded-md hover:bg-white/10 transition-colors">
+        <span className="w-1/3">{day.day}</span>
+        <div className="w-1/3 flex items-center justify-center gap-2">
+           {day.precipitationChance > 0 && <span className='text-sm text-blue-300'>{day.precipitationChance}%</span>}
+            <DayIcon className="w-6 h-6" />
         </div>
-        
-        <div className="flex justify-between items-end">
-            <div className="flex items-baseline">
-                <p className="text-2xl font-bold">{day.maxTemp}°</p>
-                <p className="text-muted-foreground">/{day.minTemp}°</p>
-            </div>
-            <p className="text-sm text-muted-foreground font-medium">{day.condition}</p>
-        </div>
-
-        <div className="space-y-2 text-sm text-muted-foreground pt-2 border-t">
-          <div className='flex justify-between'>
-            <span className='flex items-center gap-1.5'><Wind /> Wind</span>
-            <span>{day.windSpeed} km/h</span>
-          </div>
-          <div className='flex justify-between'>
-            <span className='flex items-center gap-1.5'><Waves /> Humidity</span>
-            <span>{day.humidity}%</span>
-          </div>
-           <div className='flex justify-between'>
-            <span className='flex items-center gap-1.5'><Sun /> UV Index</span>
-            <Badge variant={day.uvIndex > 7 ? "destructive" : day.uvIndex > 4 ? "secondary" : "default"} className='border'>{day.uvIndex}</Badge>
-          </div>
-        </div>
+        <span className="w-1/3 text-right">{day.maxTemp}° / {day.minTemp}°</span>
     </div>
   );
 }
@@ -262,36 +241,33 @@ function ForecastCard({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<
 
 function WeatherLoadingSkeleton() {
     return (
-        <>
-            <CardHeader>
+        <div className="p-6">
+            <CardHeader className='p-0'>
                 <Skeleton className="h-7 w-48" />
                 <Skeleton className="h-5 w-64 mt-1" />
             </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="flex justify-between">
-                    <div className="flex items-center gap-4">
-                        <Skeleton className="h-20 w-20 rounded-full" />
-                        <div>
-                            <Skeleton className="h-16 w-32" />
-                            <Skeleton className="h-5 w-20 mt-2" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Skeleton className="h-6 w-32" />
-                        <Skeleton className="h-6 w-32" />
-                        <Skeleton className="h-6 w-32" />
-                        <Skeleton className="h-6 w-32" />
+            <div className="flex justify-between my-8">
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-20 w-20 rounded-full" />
+                    <div>
+                        <Skeleton className="h-16 w-32" />
+                        <Skeleton className="h-5 w-20 mt-2" />
                     </div>
                 </div>
-                <div>
-                    <Skeleton className="h-6 w-24 mb-2" />
-                    <div className="grid sm:grid-cols-3 gap-4">
-                        <Skeleton className="h-40 w-full rounded-lg" />
-                        <Skeleton className="h-40 w-full rounded-lg" />
-                        <Skeleton className="h-40 w-full rounded-lg" />
-                    </div>
+                <div className="space-y-2 text-right">
+                    <Skeleton className="h-6 w-24 ml-auto" />
+                    <Skeleton className="h-5 w-32 ml-auto" />
+                    <Skeleton className="h-5 w-32 ml-auto" />
                 </div>
-            </CardContent>
-        </>
+            </div>
+            <div>
+                <Skeleton className="h-6 w-32 mb-4" />
+                <div className="space-y-2">
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+            </div>
+        </div>
     );
 }

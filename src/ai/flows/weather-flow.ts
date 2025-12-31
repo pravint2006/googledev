@@ -26,14 +26,17 @@ const DailyForecastSchema = z.object({
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
-  uvIndex: z.number().describe('The UV index, from 0 to 11+.')
+  uvIndex: z.number().describe('The UV index, from 0 to 11+.'),
+  precipitationChance: z.number().min(0).max(100).describe('The percentage chance of precipitation.'),
 });
+export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 
 const WeatherOutputSchema = z.object({
   city: z.string().describe("The city for which the weather is being reported, including state/region and country."),
   district: z.string().describe('The district or county for the location.'),
   pincode: z.string().describe('The postal code or pincode for the location.'),
   currentTemp: z.number().describe('The current temperature in Celsius.'),
+  feelsLike: z.number().describe('What the current temperature feels like in Celsius.'),
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
@@ -64,8 +67,9 @@ const prompt = ai.definePrompt({
   - If the user provides "Thungavi" and "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   - Return a 3-day forecast starting from tomorrow.
   - Today is Sunday. The forecast should be for Monday, Tuesday, and Wednesday.
-  - For each day in the forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, and uvIndex.
-  - Make the weather conditions varied and interesting across the days.
+  - For each day in the forecast, you MUST provide all fields: minTemp, maxTemp, condition, windSpeed, humidity, uvIndex, and precipitationChance.
+  - The 'feelsLike' temperature should be a plausible value based on the current temperature, humidity, and wind speed.
+  - Make the weather conditions and precipitation chances varied and interesting across the days.
   `,
 });
 
