@@ -18,7 +18,7 @@ const weatherIcons = {
 
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualLocation, setManualLocation] = useState('');
 
@@ -54,19 +54,6 @@ export default function WeatherWidget() {
         setLoading(false);
     }
   }
-
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        fetchWeather(position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        // If user denies permission, we do nothing and let them enter manually
-        setError("Could not get your location. Please enter a location manually.");
-        setLoading(false);
-      }
-    );
-  }, []);
 
   const handleManualLocationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
