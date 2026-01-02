@@ -43,16 +43,47 @@ const getWeatherFlow = ai.defineFlow(
         }
     } 
     // SCENARIO 2: We ONLY have a city name. 
-    // We must find coordinates for it.
+    // We must find coordinates for it using Nominatim.
     else if (city && (latitude === undefined || longitude === undefined)) {
-        const geocodingUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
-        const geoResult = await fetchJson(geocodingUrl);
-        if (!geoResult.results?.[0]) {
-            throw new Error(`Could not find location: ${city}`);
+        const nominatimHeaders = { 'User-Agent': 'AgriGateManager/1.0' };
+        let geoResult;
+        let foundLocation = false;
+
+        // Step 1: Search for "<city>, India"
+        try {
+            const indiaSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', India')}&format=json&limit=1`;
+            const results = await fetchJson(indiaSearchUrl, { headers: nominatimHeaders });
+            if (results && results.length > 0) {
+                geoResult = results[0];
+                foundLocation = true;
+            }
+        } catch (e) {
+            console.warn(`Nominatim search for "${city}, India" failed.`, e);
         }
-        latitude = geoResult.results[0].latitude;
-        longitude = geoResult.results[0].longitude;
-        locationName = geoResult.results[0].name; // Use the name from the result for consistency
+
+        // Step 2: Fallback to searching just for "<city>"
+        if (!foundLocation) {
+            try {
+                const globalSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+                const results = await fetchJson(globalSearchUrl, { headers: nominatimHeaders });
+                if (results && results.length > 0) {
+                    geoResult = results[0];
+                }
+            } catch (e) {
+                console.warn(`Nominatim global search for "${city}" failed.`, e);
+            }
+        }
+
+        if (geoResult) {
+            latitude = parseFloat(geoResult.lat);
+            longitude = parseFloat(geoResult.lon);
+            // Use the name from the result for consistency
+            const addressParts = geoResult.display_name.split(',');
+            locationName = addressParts[0];
+        } else {
+            // Step 3: If no location is found after both searches, throw a specific error.
+             throw new Error(`Could not find location: ${city}`);
+        }
     }
 
     // After the above logic, if we still don't have coordinates, we cannot proceed.
