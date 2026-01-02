@@ -86,7 +86,7 @@ async function getGeocodedLocation(input: WeatherInput, apiKey: string): Promise
 
 export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+    if (!apiKey) {
         throw new Error("Google Maps API key is not configured. Please add it to your .env.local file.");
     }
 
