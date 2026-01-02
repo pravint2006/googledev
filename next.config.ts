@@ -1,5 +1,6 @@
 import type {NextConfig} from 'next';
 
+// Forcing a server restart to load env variables.
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
