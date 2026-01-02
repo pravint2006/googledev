@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ const char* GPRS_USER = "";
 const char* GPRS_PASS = "";
 
 // Your Firebase project credentials from your app's config
-#define API_KEY "AIzaSyAf0BpW4HGxWmnKF8Os6pl3SWcCpZ7spMA"
+#define API_KEY "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28"
 #define DATABASE_URL "dev-61141163-629c6.firebaseio.com"
 
 // The specific User and Farm this device belongs to
