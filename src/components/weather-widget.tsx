@@ -1,8 +1,7 @@
-
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { format } from 'date-fns';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { format, parseISO, isToday } from 'date-fns';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { getWeather } from '@/ai/flows/weather-flow';
 import { WeatherOutput } from '@/ai/flows/weather-types';
@@ -16,6 +15,8 @@ import { WeatherIcon } from './weather-icons';
 import { HourlyWeatherChart } from './weather-chart';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { WindChart } from './wind-chart';
+import { ScrollArea, ScrollBar } from './ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 function WeatherSkeleton() {
   return (
@@ -35,6 +36,7 @@ export default function WeatherWidget() {
   const [error, setError] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
@@ -196,6 +198,64 @@ export default function WeatherWidget() {
     );
   }
 
+  const isDaySelected = selectedDayIndex === 0 && current.isDay === 1;
+
+  // Derive display data based on selected day
+  const displayData = useMemo(() => {
+    if (selectedDayIndex === 0) {
+      return {
+        temp: current.temperature,
+        weatherCode: current.weatherCode,
+        isDay: current.isDay === 1,
+        description: weatherDescription(current.weatherCode),
+        humidity: current.humidity,
+        windSpeed: current.windSpeed,
+        highTemp: daily.temperatureMax[0],
+        lowTemp: daily.temperatureMin[0],
+      };
+    }
+    const selectedDaily = daily;
+    return {
+      temp: selectedDaily.temperatureMax[selectedDayIndex],
+      weatherCode: selectedDaily.weatherCode[selectedDayIndex],
+      isDay: true, // For future days, assume day time for icon
+      description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
+      humidity: null, // Not available for future daily forecasts
+      windSpeed: null,
+      highTemp: selectedDaily.temperatureMax[selectedDayIndex],
+      lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
+    };
+  }, [selectedDayIndex, current, daily]);
+
+  const hourlyDataForChart = useMemo(() => {
+    const startIndex = selectedDayIndex * 24;
+    const endIndex = startIndex + 24;
+    return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+      time: t,
+      value: hourly.temperature[startIndex + i],
+    }));
+  }, [selectedDayIndex, hourly]);
+  
+  const hourlyPrecipitationData = useMemo(() => {
+      const startIndex = selectedDayIndex * 24;
+      const endIndex = startIndex + 24;
+      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+          time: t,
+          value: hourly.precipitationProbability[startIndex + i],
+      }));
+  }, [selectedDayIndex, hourly]);
+
+  const hourlyWindData = useMemo(() => {
+      const startIndex = selectedDayIndex * 24;
+      const endIndex = startIndex + 24;
+      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+          time: t,
+          speed: hourly.windSpeed[startIndex + i],
+          direction: hourly.windDirection[startIndex + i],
+      }));
+  }, [selectedDayIndex, hourly]);
+
+
   return (
     <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
         <div className="flex justify-between items-start gap-4">
@@ -210,13 +270,14 @@ export default function WeatherWidget() {
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-center my-6 md:my-10 gap-4 md:gap-8 text-center md:text-left">
-            <WeatherIcon weatherCode={current.weatherCode} isDay={current.isDay === 1} className="w-24 h-24 md:w-32 md:h-32" />
+            <WeatherIcon weatherCode={displayData.weatherCode} isDay={displayData.isDay} className="w-24 h-24 md:w-32 md:h-32" />
             <div>
-                <p className="text-7xl md:text-8xl font-light">{current.temperature}<span className="text-5xl md:text-6xl text-slate-400 align-top">°C</span></p>
-                <p className="text-lg text-slate-300 -mt-2">{weatherDescription(current.weatherCode)}</p>
+                <p className="text-7xl md:text-8xl font-light">{displayData.temp}<span className="text-5xl md:text-6xl text-slate-400 align-top">°C</span></p>
+                <p className="text-lg text-slate-300 -mt-2">{displayData.description}</p>
                 <div className="flex gap-4 justify-center md:justify-start mt-2 text-sm text-slate-400">
-                    <span className="flex items-center gap-1"><Droplet size={14} />{current.humidity}%</span>
-                    <span className="flex items-center gap-1"><Wind size={14} />{current.windSpeed} km/h</span>
+                    <span className='font-semibold'>{displayData.highTemp}°</span> / {displayData.lowTemp}°
+                    {displayData.humidity !== null && <span className="flex items-center gap-1"><Droplet size={14} />{displayData.humidity}%</span>}
+                    {displayData.windSpeed !== null && <span className="flex items-center gap-1"><Wind size={14} />{displayData.windSpeed} km/h</span>}
                 </div>
             </div>
         </div>
@@ -228,34 +289,42 @@ export default function WeatherWidget() {
                 <TabsTrigger value="wind">Wind</TabsTrigger>
             </TabsList>
             <TabsContent value="temperature" className="mt-4">
-               <HourlyWeatherChart data={hourly.time.map((t, i) => ({ time: t, value: hourly.temperature[i]}))} unit="°C" color="hsl(48, 96%, 58%)" />
+               <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="hsl(48, 96%, 58%)" />
             </TabsContent>
             <TabsContent value="precipitation" className="mt-4">
-                <HourlyWeatherChart data={hourly.time.map((t, i) => ({ time: t, value: hourly.precipitationProbability[i]}))} unit="%" color="hsl(205, 87%, 55%)" />
+                <HourlyWeatherChart data={hourlyPrecipitationData} unit="%" color="hsl(205, 87%, 55%)" />
             </TabsContent>
             <TabsContent value="wind" className="mt-4">
-                 <WindChart data={hourly.time.map((t, i) => ({ time: t, speed: hourly.windSpeed[i], direction: hourly.windDirection[i] }))} />
+                 <WindChart data={hourlyWindData} />
             </TabsContent>
         </Tabs>
 
         <div className="mt-6 border-t border-slate-700/50 pt-4">
-            <h3 className="font-semibold mb-3">7-Day Forecast</h3>
-            <div className="space-y-3">
-                {daily.time.map((day, i) => (
-                    <div key={day} className="flex justify-between items-center text-sm">
-                        <p className="w-1/4 text-slate-300">{format(new Date(day), 'eee')}</p>
-                        <div className="w-1/4 flex justify-center">
-                            <WeatherIcon weatherCode={daily.weatherCode[i]} isDay={true} className="w-6 h-6" />
-                        </div>
-                        <p className="w-1/4 text-slate-400">{daily.temperatureMin[i]}°</p>
-                        <div className="w-1/4 h-1.5 bg-gradient-to-r from-cyan-400 via-yellow-400 to-orange-500 rounded-full" style={{
-                            // This is a simplified representation. A real implementation
-                            // would calculate the position of the min/max within a broader range.
-                        }}></div>
-                        <p className="w-1/4 text-right">{daily.temperatureMax[i]}°</p>
-                    </div>
-                ))}
-            </div>
+             <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex w-max space-x-1 pb-2">
+                    {daily.time.map((day, i) => {
+                        const dayDate = parseISO(day);
+                        return (
+                            <button
+                                key={day}
+                                onClick={() => setSelectedDayIndex(i)}
+                                className={cn(
+                                    'flex flex-col items-center gap-1 rounded-lg p-2 text-center w-20 transition-colors duration-200',
+                                    selectedDayIndex === i ? 'bg-slate-700/60' : 'hover:bg-slate-700/30'
+                                )}
+                            >
+                                <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
+                                <WeatherIcon weatherCode={daily.weatherCode[i]} isDay={true} className="w-8 h-8 my-1" />
+                                <p className="text-sm">
+                                    <span className="font-semibold">{daily.temperatureMax[i]}°</span>
+                                    <span className="text-slate-400 ml-1">{daily.temperatureMin[i]}°</span>
+                                </p>
+                            </button>
+                        );
+                    })}
+                </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
         </div>
     </Card>
   );
