@@ -86,7 +86,7 @@ async function getGeocodedLocation(input: WeatherInput, apiKey: string): Promise
 
 export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+    if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey === 'AIzaSyAmjW9IFi_A1BZz4M-KKb3PNjXyc-LdyCE') {
         throw new Error("Google Maps API key is not configured. Please add it to your .env.local file.");
     }
 
@@ -109,7 +109,7 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             if (errorBody.includes("Weather API has not been used in project")) {
                  throw new Error("The Weather API is not enabled for your API key. Please enable it in the Google Cloud Console.");
             }
-            throw new Error(`Failed to fetch data from Weather API. Status: ${weatherResponse.status}.`);
+            throw new Error(`Failed to fetch data from Weather API. Status: ${weatherResponse.status}. Response: ${errorBody}`);
         }
 
         const weatherData = await weatherResponse.json();
