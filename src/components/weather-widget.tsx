@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
@@ -143,7 +144,7 @@ export default function WeatherWidget() {
     if (!weatherData) return null;
     const { current, daily } = weatherData;
 
-    if (selectedDayIndex === 0) {
+    if (selectedDayIndex === 0 && isToday(parseISO(daily.time[0]))) {
       return {
         temp: current.temperature,
         weatherCode: current.weatherCode,
