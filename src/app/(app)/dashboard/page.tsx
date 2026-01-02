@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -7,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { PlusCircle, Tractor } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FarmCard from '@/components/farm-card';
-import WeatherWidget from '@/components/weather-widget';
+import { WeatherWidget } from '@/components/weather-widget';
 
 export default function DashboardPage() {
   const { farms, isLoading } = useFarmStore();
