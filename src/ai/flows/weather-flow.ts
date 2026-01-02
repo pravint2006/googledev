@@ -9,7 +9,7 @@
  */
 
 import { z } from 'genkit';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 const WeatherInputSchema = z.object({
   location: z.string().describe('The city or location for the weather forecast (e.g., "Chennai, India").'),
@@ -124,13 +124,24 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
 
         if (reverseGeocodeData.status === 'OK' && reverseGeocodeData.results.length > 0) {
             const components = reverseGeocodeData.results[0].address_components;
-            city = components.find((c: any) => c.types.includes('locality'))?.long_name || city;
-            district = components.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name || district;
-            pincode = components.find((c: any) => c.types.includes('postal_code'))?.long_name || pincode;
+            const locality = components.find((c: any) => c.types.includes('locality'))?.long_name;
+            const adminArea3 = components.find((c: any) => c.types.includes('administrative_area_level_3'))?.long_name;
+            const adminArea2 = components.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name;
+            const postalTown = components.find((c: any) => c.types.includes('postal_town'))?.long_name;
+
+            city = locality || postalTown || adminArea3 || input.location;
+            district = adminArea2 || 'N/A';
+            pincode = components.find((c: any) => c.types.includes('postal_code'))?.long_name || input.pincode || 'N/A';
         }
+
 
         const { dailyForecast, hourlyForecast, currentConditions } = weatherData;
         const current = currentConditions;
+
+        // Handle cases where some data might be missing from the weather API response
+        if (!current || !dailyForecast?.days || !hourlyForecast?.hours) {
+            throw new Error("Incomplete data received from Weather API. The response might be missing current conditions, daily, or hourly forecasts.");
+        }
 
         return {
             city,
@@ -144,14 +155,14 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             forecast: dailyForecast.days.slice(0, 7).map((day: any) => ({
                 day: format(parseISO(day.date), 'eeee'),
                 date: `${day.date.year}-${String(day.date.month).padStart(2,'0')}-${String(day.date.day).padStart(2,'0')}`,
-                temp: Math.round(day.temperature.average),
-                condition: mapWeatherCode(day.weatherCode.max),
+                temp: Math.round(day.temperatureAvg),
+                condition: mapWeatherCode(day.weatherCodeMax),
             })),
             hourlyForecast: hourlyForecast.hours.slice(0, 24).map((hour: any) => ({
                 time: format(parseISO(hour.dateTime), 'h a'),
                 temp: Math.round(hour.temperature),
                 condition: mapWeatherCode(hour.weatherCode),
-                rainProbability: Math.round(hour.precipitation.probability * 100),
+                rainProbability: Math.round((hour.precipitation?.probability || 0) * 100),
             })),
         };
 
