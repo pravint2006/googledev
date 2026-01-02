@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from '@/components/app-logo';
@@ -37,14 +36,13 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
-  isGoogleLoading: boolean;
-  setIsGoogleLoading: (isLoading: boolean) => void;
 }
 
-export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoading }: LoginFormProps) {
+export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -60,9 +58,8 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
     try {
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
       await setPersistence(auth, persistence);
-
-
       await signInWithEmailAndPassword(auth, email, password);
+      // No navigation here. The FirebaseProvider will handle it.
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -136,7 +133,7 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
     const provider = new GoogleAuthProvider();
     
     try {
-      // This just initiates the redirect. The result is handled on page load.
+      // This just initiates the redirect. The result is handled on the login page load.
       await signInWithRedirect(auth, provider);
     } catch (error) {
       const authError = error as AuthError;
@@ -145,10 +142,9 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
         title: 'Google Sign-In Failed',
         description: authError.message || 'An unexpected error occurred.',
       });
-      setIsGoogleLoading(false); // Only reachable if signInWithRedirect fails immediately
+      setIsGoogleLoading(false);
     }
   };
-
 
   return (
     <>

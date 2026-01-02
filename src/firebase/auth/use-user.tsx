@@ -1,37 +1,18 @@
 
 'use client';
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useAuth as useFirebaseAuth } from '@/firebase';
+import { useFirebase } from '@/firebase/provider';
 import type { User } from 'firebase/auth';
 
 export { type User } from 'firebase/auth';
 
+// This hook now simply exposes the user state from the central FirebaseProvider context.
+// All the onAuthStateChanged logic is handled in the provider itself.
 export function useUser() {
-  const auth = useFirebaseAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [claims, setClaims] = useState<any>(null);
+  const { user, isUserLoading: loading } = useFirebase();
 
-  useEffect(() => {
-    if (!auth) {
-      setLoading(true);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        const tokenResult = await user.getIdTokenResult();
-        setClaims(tokenResult.claims);
-      } else {
-        setUser(null);
-        setClaims(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [auth]);
-
-  return { user, loading, claims };
+  // The claims logic is simplified or can be enhanced here if needed.
+  // For now, we remove the direct getIdTokenResult call to keep the hook lightweight.
+  // If claims are needed, they should be derived from the user object when it changes.
+  
+  return { user, loading, claims: (user as any)?.claims || null };
 }

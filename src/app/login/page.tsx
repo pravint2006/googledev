@@ -8,7 +8,6 @@ import { SignUpForm } from '@/components/signup-form';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser, useAuth, useFirestore } from '@/firebase';
-import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getRedirectResult, type AuthError } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -17,15 +16,17 @@ import { useToast } from '@/hooks/use-toast';
 export default function LoginPage() {
   const bgImage = PlaceHolderImages.find((p) => p.id === 'login-background');
   const [isLoginView, setIsLoginView] = useState(true);
-  const { user, loading: userLoading } = useUser();
-  const router = useRouter();
+  
+  // We still use useUser here to show a loading spinner while redirecting.
+  const { user, isUserLoading } = useUser();
+
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(true); // Start true to handle initial redirect check
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
 
-
-  // This effect handles the result from a Google Sign-In redirect
+  // This effect handles the result from a Google Sign-In redirect.
+  // It runs once on component mount.
   useEffect(() => {
     if (!auth || !firestore) return;
 
@@ -49,44 +50,32 @@ export default function LoginPage() {
                     });
                      toast({ title: 'Welcome!', description: 'Your account has been created.' });
                 }
-                // Existing users will be handled by the main redirect logic below.
+                // The FirebaseProvider will now handle the redirect to /dashboard
             }
         } catch (error) {
             const authError = error as AuthError;
-            // A 'no-redirect-results' error is expected if the page is loaded without a redirect.
+            // 'auth/no-redirect-results' is expected if the page loads without a redirect action.
+            // We only show a toast for actual errors.
             if (authError.code !== 'auth/no-redirect-results') {
               toast({
                   variant: 'destructive',
                   title: 'Google Sign-In Failed',
-                  description: authError.message || 'An unexpected error occurred.',
+                  description: authError.message || 'An unexpected error occurred during sign-in.',
               });
             }
         } finally {
-            setIsGoogleLoading(false); // We're done processing the redirect
+            // Finished processing, whether successful or not.
+            setIsProcessingRedirect(false);
         }
     };
     
     processRedirect();
   }, [auth, firestore, toast]);
 
-
-  useEffect(() => {
-    // Wait until both user loading and Google redirect processing are complete
-    if (userLoading || isGoogleLoading) return;
-
-    if (user) {
-      if (user.emailVerified) {
-        router.push('/dashboard');
-      } else {
-        // This handles email signups that need verification.
-        // Google signups are always verified.
-        router.push('/verify-email');
-      }
-    }
-  }, [user, userLoading, isGoogleLoading, router]);
-  
-  // Show a loading spinner while auth state is being determined or a redirect is processed
-  if (userLoading || isGoogleLoading || user) {
+  // The loading screen is shown if Firebase is checking the user state OR if we are processing
+  // a potential sign-in redirect. It also shows if the user is logged in, as the FirebaseProvider
+  // will be handling the redirect away from this page shortly.
+  if (isUserLoading || isProcessingRedirect || user) {
     return (
        <main className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -94,6 +83,7 @@ export default function LoginPage() {
     )
   }
 
+  // If we're done loading and there's no user, show the login/signup form.
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       {bgImage && (
@@ -119,14 +109,10 @@ export default function LoginPage() {
           {isLoginView ? (
             <LoginForm 
               onSwitchToSignup={() => setIsLoginView(false)} 
-              isGoogleLoading={isGoogleLoading}
-              setIsGoogleLoading={setIsGoogleLoading}
             />
           ) : (
             <SignUpForm 
               onSwitchToLogin={() => setIsLoginView(true)} 
-              isGoogleLoading={isGoogleLoading}
-              setIsGoogleLoading={setIsGoogleLoading}
             />
           )}
         </motion.div>

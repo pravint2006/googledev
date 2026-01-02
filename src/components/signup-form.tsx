@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -14,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/app-logo';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { 
   createUserWithEmailAndPassword, 
@@ -40,16 +39,14 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void;
-  isGoogleLoading: boolean;
-  setIsGoogleLoading: (isLoading: boolean) => void;
 }
 
-export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoading }: SignUpFormProps) {
-  const router = useRouter();
+export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -99,7 +96,7 @@ export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoadin
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",
       });
-      // The redirect is handled by the global auth state listener
+      // No navigation here. The FirebaseProvider will handle it.
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -134,12 +131,13 @@ export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoadin
   };
 
   const handleGoogleSignUp = async () => {
-    if (!auth || !firestore) return;
+    if (!auth) return;
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
 
     try {
         await signInWithRedirect(auth, provider);
+        // The result is handled on the login page after redirect.
     } catch (error) {
       const authError = error as AuthError;
       toast({
