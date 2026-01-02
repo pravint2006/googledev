@@ -98,92 +98,71 @@ async function getCoordsFromLocation(location: string, pincode: string | undefin
 
 
 export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
-    if (!apiKey) {
-        throw new Error("OpenWeatherMap API key is not configured. Please add NEXT_PUBLIC_OPENWEATHER_API_KEY to your .env.local file.");
-    }
+  const apiKey = process.env.OPENWEATHER_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing OPENWEATHER_API_KEY in environment variables');
+  }
 
-    try {
-        let lat = input.lat;
-        let lon = input.lon;
-        let locationName = input.location;
+  let lat = input.lat;
+  let lon = input.lon;
+  let locationName = input.location;
 
-        if (!lat || !lon) {
-            const geoData = await getCoordsFromLocation(input.location, input.pincode, apiKey);
-            lat = geoData.lat;
-            lon = geoData.lon;
-            locationName = `${geoData.name}, ${geoData.country}`;
-        }
-        
-        // Fetch current weather and forecast in one call
-        const weatherUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
-        
-        const weatherResponse = await fetch(weatherUrl);
-        if (!weatherResponse.ok) {
-            if (weatherResponse.status === 401) {
-                 throw new Error('The OpenWeatherMap API key is invalid or not yet active. Please check your key and try again in a few minutes.');
-            }
-            throw new Error(`Failed to fetch weather data from OpenWeatherMap. Status: ${weatherResponse.status}`);
-        }
+  if (lat == null || lon == null) {
+    const geo = await getCoordsFromLocation(input.location, input.pincode, apiKey);
+    lat = geo.lat;
+    lon = geo.lon;
+    locationName = `${geo.name}, ${geo.country}`;
+  }
 
-        const weatherData = await weatherResponse.json();
+  const weatherUrl =
+    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
 
-        const { list, city } = weatherData;
-        const current = list[0];
+  const weatherResponse = await fetch(weatherUrl);
+  if (!weatherResponse.ok) {
+    throw new Error(`Weather API failed: ${weatherResponse.status}`);
+  }
 
-        // Process hourly forecast for the next 24 hours
-        const hourlyForecast: HourlyForecast[] = list.slice(0, 8).map((hour: any) => ({
-            time: format(fromUnixTime(hour.dt), 'h a'),
-            temp: Math.round(hour.main.temp),
-            condition: mapWeatherCondition(hour.weather[0].main, hour.weather[0].description),
-            rainProbability: Math.round((hour.pop || 0) * 100),
-        }));
+  const weatherData = await weatherResponse.json();
+  const { list, city } = weatherData;
+  const current = list[0];
 
-        // Process daily forecast
-        const dailyForecasts: { [key: string]: { temps: number[], conditions: string[], descriptions: string[]} } = {};
-        list.forEach((item: any) => {
-            const date = format(fromUnixTime(item.dt), 'yyyy-MM-dd');
-            if (!dailyForecasts[date]) {
-                dailyForecasts[date] = { temps: [], conditions: [], descriptions: [] };
-            }
-            dailyForecasts[date].temps.push(item.main.temp);
-            dailyForecasts[date].conditions.push(item.weather[0].main);
-            dailyForecasts[date].descriptions.push(item.weather[0].description);
-        });
+  const hourlyForecast = list.slice(0, 8).map((hour: any) => ({
+    time: format(fromUnixTime(hour.dt), 'h a'),
+    temp: Math.round(hour.main.temp),
+    condition: mapWeatherCondition(hour.weather[0].main, hour.weather[0].description),
+    rainProbability: Math.round((hour.pop || 0) * 100),
+  }));
 
-        const forecast: DailyForecast[] = Object.keys(dailyForecasts).slice(0, 5).map(date => {
-            const dayData = dailyForecasts[date];
-            const avgTemp = dayData.temps.reduce((a, b) => a + b, 0) / dayData.temps.length;
-            // For daily condition, find the most frequent one
-            const mode = (arr: string[]) => arr.reduce((a, b, i, arr) => (arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b), '');
-            const mainCondition = mode(dayData.conditions);
-            const description = dayData.descriptions[Math.floor(dayData.descriptions.length / 2)]; // Use midday description
-            return {
-                day: format(new Date(date), 'eeee'),
-                date: date,
-                temp: Math.round(avgTemp),
-                condition: mapWeatherCondition(mainCondition, description),
-            };
-        });
+  const dailyMap: Record<string, any[]> = {};
+  list.forEach((i: any) => {
+    const d = format(fromUnixTime(i.dt), 'yyyy-MM-dd');
+    dailyMap[d] ??= [];
+    dailyMap[d].push(i);
+  });
 
-        return {
-            city: locationName,
-            district: city.name || 'N/A',
-            pincode: input.pincode || 'N/A',
-            currentTemp: Math.round(current.main.temp),
-            feelsLike: Math.round(current.main.feels_like),
-            condition: mapWeatherCondition(current.weather[0].main, current.weather[0].description),
-            windSpeed: parseFloat((current.wind.speed * 3.6).toFixed(1)), // m/s to km/h
-            humidity: current.main.humidity,
-            forecast: forecast,
-            hourlyForecast: hourlyForecast,
-        };
+  const forecast = Object.entries(dailyMap).slice(0, 5).map(([date, items]) => {
+    const avg =
+      items.reduce((s, i) => s + i.main.temp, 0) / items.length;
+    const mid = items[Math.floor(items.length / 2)];
 
-    } catch (error) {
-        console.error("Error in getWeather flow:", error);
-        if (error instanceof Error) {
-            throw error; // Re-throw the specific error
-        }
-        throw new Error("An unknown error occurred while fetching weather data.");
-    }
+    return {
+      day: format(new Date(date), 'eeee'),
+      date,
+      temp: Math.round(avg),
+      condition: mapWeatherCondition(mid.weather[0].main, mid.weather[0].description),
+    };
+  });
+
+  return {
+    city: locationName,
+    district: city?.state || 'N/A',
+    pincode: input.pincode || 'N/A',
+    currentTemp: Math.round(current.main.temp),
+    feelsLike: Math.round(current.main.feels_like),
+    condition: mapWeatherCondition(current.weather[0].main, current.weather[0].description),
+    windSpeed: +(current.wind.speed * 3.6).toFixed(1),
+    humidity: current.main.humidity,
+    forecast,
+    hourlyForecast,
+  };
 }
