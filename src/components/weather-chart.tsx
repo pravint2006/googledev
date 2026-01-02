@@ -58,7 +58,7 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
                       }
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={12}>
+                          <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize={12}>
                             {format(date, 'ha')}
                           </text>
                         </g>
