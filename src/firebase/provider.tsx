@@ -27,7 +27,7 @@ export interface FirebaseContextState {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 // Define which paths are considered "public" and don't require authentication.
-const PUBLIC_PATHS = ['/login', '/signup']; // Add any other public paths here
+const PUBLIC_PATHS = ['/login', '/signup', '/verify-email']; // Add any other public paths here
 
 /**
  * Provides Firebase services and manages user authentication state and routing logic.
@@ -58,17 +58,17 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     if (user) {
       // USER IS LOGGED IN
-      if (!user.emailVerified) {
-        if (pathname !== '/verify-email') {
+      if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+         if (pathname !== '/verify-email') {
           router.push('/verify-email');
         }
-      } else if (isPublicPath || pathname === '/verify-email' || pathname === '/') {
-        // If logged-in user is on a public page, the verification page, or root, send to dashboard.
+      } else if (isPublicPath || pathname === '/') {
+        // If logged-in & verified user is on a public page or root, send to dashboard.
         router.push('/dashboard');
       }
     } else {
       // NO USER LOGGED IN
-      if (!isPublicPath) {
+      if (!isPublicPath && pathname !== '/') {
         // If trying to access a protected route, redirect to login.
         router.push('/login');
       }
@@ -84,24 +84,22 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isUserLoading,
   }), [firebaseApp, firestore, auth, user, isUserLoading]);
 
-  // While loading, show a full-screen spinner. The router logic in the effect above
-  // will handle redirection once loading is complete.
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // If there's no user and we're not on a public path, we render a loading screen
-  // while the redirect to /login is in progress.
+  // Determine if the content should be rendered.
+  // We render if:
+  // 1. We are still loading the auth state (which shows a global spinner).
+  // 2. The user is authenticated.
+  // 3. The user is not authenticated, but is on a public path.
   const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
-   if (!user && !isPublicPath) {
+  const canRenderContent = isUserLoading || user || isPublicPath || pathname === '/';
+
+
+  if (!canRenderContent) {
+    // If none of the conditions are met (e.g. unauthenticated user on protected route),
+    // we show a spinner while the redirect from the useEffect above is happening.
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
     );
   }
 

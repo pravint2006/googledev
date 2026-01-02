@@ -1,13 +1,30 @@
 
 'use client';
 
-// This component's only job is to render its children.
-// The FirebaseProvider wrapping it in the RootLayout will handle all
-// authentication checks and redirects. This simplifies the root page
-// and avoids any client-side redirect logic here.
-export default function RootPage({ children }: { children: React.ReactNode }) {
-  // Previously, this component had a useEffect for redirection.
-  // That logic is now centralized in FirebaseProvider.
-  // It now just acts as a pass-through for what the provider decides to render.
-  return <>{children}</>;
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+
+export default function RootPage() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading) {
+      if (user) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+    }
+    // This effect should run whenever the user or loading state changes.
+  }, [user, isUserLoading, router]);
+  
+  // Render a loading spinner while the auth state is being determined.
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+    </div>
+  );
 }

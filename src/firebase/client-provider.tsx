@@ -4,8 +4,6 @@
 import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { Loader2 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
