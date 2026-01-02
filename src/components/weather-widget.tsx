@@ -1,67 +1,62 @@
-/**
- * @fileoverview A React component that displays a weather widget.
- *
- * The component uses a combination of client-side and server-side logic
- * to fetch and display weather data. It leverages Genkit for the AI-powered
- * weather fetching flow and integrates with the browser's geolocation API.
- */
 
 'use client';
 
-import { getWeather, WeatherOutput, DailyForecast } from '@/ai/flows/weather-flow';
+import { getWeather, WeatherOutput, DailyForecast, HourlyForecast } from '@/ai/flows/weather-flow';
 import { useEffect, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
-  Cloud,
-  CloudFog,
-  CloudLightning,
-  CloudRain,
-  Sun,
-  Umbrella,
-} from 'lucide-react';
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from 'recharts';
+
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
+  CloudIcon,
+  CloudFogIcon,
+  CloudLightningIcon,
+  CloudRainIcon,
+  SunIcon,
+  WindIcon,
+} from '@/components/weather-icons';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Droplets, Thermometer, Calendar } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils';
 
 /**
  * Maps a weather condition string to its corresponding SVG icon component.
  * @param condition The weather condition string (e.g., 'Sunny', 'Cloudy').
  * @returns A React functional component for the weather icon.
  */
-function getWeatherIcon(condition: WeatherOutput['condition']) {
+function getWeatherIcon(condition: WeatherOutput['condition'], isDay: boolean = true) {
   switch (condition) {
     case 'Sunny':
-      return Sun;
-    case 'Cloudy':
+      return SunIcon;
     case 'Partly Cloudy':
-      return Cloud;
+    case 'Cloudy':
+      return CloudIcon;
     case 'Rainy':
-      return CloudRain;
-    case 'Stormy':
+      return CloudRainIcon;
     case 'Thunderstorms':
-      return CloudLightning;
+      return CloudLightningIcon;
     case 'Misty':
     case 'Hazy':
-      return CloudFog;
     case 'Snowy':
-      return CloudFog; // Placeholder, as Snowy is not in lucide-react
+      return CloudFogIcon;
     default:
-      return Cloud;
+      return isDay ? SunIcon : CloudIcon;
   }
 }
 
 /**
  * The main WeatherWidget component.
- * It handles fetching the user's location, running the weather flow,
- * and rendering the weather information.
  */
 export function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherOutput | null>(null);
@@ -72,8 +67,6 @@ export function WeatherWidget() {
     const fetchWeather = async (lat: number, lon: number) => {
       try {
         const weatherResponse = await getWeather({ lat, lon, location: '' });
-        
-        // Check if the response contains our custom error structure
         if ('error' in weatherResponse && weatherResponse.error) {
           setError((weatherResponse as any).message || 'Failed to get weather data.');
         } else {
@@ -93,9 +86,7 @@ export function WeatherWidget() {
           fetchWeather(latitude, longitude);
         },
         (err) => {
-          setError(
-            `Geolocation error: ${err.message}. Please enable location services.`
-          );
+          setError(`Geolocation error: ${err.message}. Please enable location services.`);
           setLocationFetched(true);
         }
       );
@@ -132,184 +123,200 @@ export function WeatherWidget() {
 
   const {
     city,
-    district,
     currentTemp,
-    feelsLike,
     condition,
-    windSpeed,
-    humidity,
     forecast,
     hourlyForecast,
+    windSpeed,
+    humidity
   } = weather;
 
   const MainWeatherIcon = getWeatherIcon(condition);
   const today = new Date();
 
   return (
-    <Card className="shadow-lg">
+    <Card className="bg-[#1e293b] text-white border-slate-700 shadow-xl">
       <CardContent className="p-6">
-      {/* Today's Weather */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <p className="text-lg font-semibold text-foreground">
-            {format(today, 'eeee, MMMM d, yyyy')}
-          </p>
-          <p className="text-md text-muted-foreground">
-            Current location <br /> {city} - {district}
-          </p>
+        <div className="mb-4">
+          <p className="text-xl font-semibold">{city}</p>
+          <p className="text-sm text-slate-400">{format(today, 'eeee, MMMM d')}</p>
         </div>
-      </div>
 
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center">
-          <MainWeatherIcon className="w-24 h-24 text-accent mr-4" />
-          <div>
-            <p className="text-7xl font-bold text-foreground">{currentTemp}°</p>
-            <p className="text-lg text-muted-foreground capitalize">{condition}</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-lg text-foreground">Feels like {feelsLike}°</p>
-          <p className="text-md text-muted-foreground">Wind: {windSpeed} km/h</p>
-          <p className="text-md text-muted-foreground">Humidity: {humidity}%</p>
-        </div>
-      </div>
-
-      {/* 24-Hour Forecast */}
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold text-foreground mb-4">
-          3-Hour Forecast
-        </h3>
-        <Carousel
-          opts={{
-            align: 'start',
-          }}
-          className="w-full"
-        >
-          <CarouselContent>
-            {hourlyForecast.map((hour, index) => {
-              const HourIcon = getWeatherIcon(hour.condition);
-              return (
-                <CarouselItem
-                  key={index}
-                  className="pt-1 md:basis-1/6 lg:basis-1/8"
-                >
-                  <div className="p-1">
-                    <div className="bg-muted/50 rounded-lg p-4 flex flex-col items-center justify-center text-center">
-                      <p className="text-sm font-medium text-foreground">
-                        {hour.time}
-                      </p>
-                      <HourIcon className="w-8 h-8 text-primary my-2" />
-                      <p className="text-xl font-bold text-foreground">
-                        {hour.temp}°
-                      </p>
-                      {hour.rainProbability > 0 && (
-                        <div className="flex items-center text-xs text-primary mt-1">
-                          <CloudRain className="w-3 h-3 mr-1" />
-                          <span>{hour.rainProbability}%</span>
-                        </div>
-                      )}
+        <div className="flex flex-col md:flex-row gap-8 mb-6">
+            <div className="flex-1 flex items-center">
+              <MainWeatherIcon className="w-20 h-20 text-yellow-400 mr-4" />
+              <div>
+                <p className="text-7xl font-bold">{currentTemp}°C</p>
+                <p className="text-lg text-slate-300 capitalize">{condition}</p>
+              </div>
+            </div>
+             <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                <div className="flex items-center gap-2">
+                    <Thermometer className="w-5 h-5 text-slate-400"/>
+                    <div>
+                        <p className="text-slate-400">Humidity</p>
+                        <p className="font-semibold">{humidity}%</p>
                     </div>
-                  </div>
-                </CarouselItem>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <WindIcon className="w-5 h-5 text-slate-400"/>
+                    <div>
+                        <p className="text-slate-400">Wind</p>
+                        <p className="font-semibold">{windSpeed} km/h</p>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <Droplets className="w-5 h-5 text-slate-400"/>
+                    <div>
+                        <p className="text-slate-400">Precipitation</p>
+                        <p className="font-semibold">{hourlyForecast[0]?.rainProbability || 0}%</p>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-slate-400"/>
+                     <div>
+                        <p className="text-slate-400">Forecast</p>
+                        <p className="font-semibold">{forecast.length}-Day</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <Tabs defaultValue="temperature" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-slate-800/80 mb-4">
+                <TabsTrigger value="temperature">Temperature</TabsTrigger>
+                <TabsTrigger value="precipitation">Precipitation</TabsTrigger>
+                <TabsTrigger value="wind">Wind</TabsTrigger>
+            </TabsList>
+            <TabsContent value="temperature">
+                <ForecastChart data={hourlyForecast} dataKey="temp" unit="°" color="hsl(48, 96%, 58%)" />
+            </TabsContent>
+            <TabsContent value="precipitation">
+                <ForecastChart data={hourlyForecast} dataKey="rainProbability" unit="%" color="hsl(204, 96%, 58%)" />
+            </TabsContent>
+            <TabsContent value="wind">
+                <p className="text-center text-slate-400 py-10">Wind forecast data is not available in the current API integration.</p>
+            </TabsContent>
+        </Tabs>
+        
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold text-slate-200 mb-2">5-Day Forecast</h3>
+          <div className="space-y-1">
+            {forecast.map((day, index) => {
+              const DayIcon = getWeatherIcon(day.condition);
+              const isToday = format(parseISO(day.date), 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+              return (
+                <ForecastRow key={index} day={day} DayIcon={DayIcon} isToday={isToday} />
               );
             })}
-          </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
-        </Carousel>
-      </div>
-
-      {/* 5-Day Forecast */}
-      <div>
-        <h3 className="text-xl font-semibold text-foreground mb-4">
-          5-Day Forecast
-        </h3>
-        <div className="space-y-2">
-          {forecast.map((day, index) => {
-            const DayIcon = getWeatherIcon(day.condition);
-            const isToday =
-              format(parseISO(day.date), 'yyyy-MM-dd') ===
-              format(today, 'yyyy-MM-dd');
-            return (
-              <ForecastRow
-                key={index}
-                day={day}
-                DayIcon={DayIcon}
-                isToday={isToday}
-              />
-            );
-          })}
+          </div>
         </div>
-      </div>
       </CardContent>
     </Card>
   );
 }
 
+function ForecastChart({ data, dataKey, unit, color }: { data: HourlyForecast[], dataKey: keyof HourlyForecast, unit: string, color: string }) {
+    return (
+        <div className="h-48 w-full">
+            <ResponsiveContainer>
+                <LineChart data={data} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                    <XAxis 
+                        dataKey="time" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tick={{ fill: 'hsl(220, 14%, 71%)', fontSize: 12 }} 
+                        interval='preserveStartEnd'
+                        padding={{ left: 20, right: 20 }}
+                    />
+                    <YAxis hide={true} domain={['dataMin - 5', 'dataMax + 5']} />
+                    <Tooltip
+                        contentStyle={{
+                            backgroundColor: 'hsl(222.2, 84%, 4.9%)',
+                            borderColor: 'hsl(217.2, 32.6%, 17.5%)',
+                            color: 'white',
+                            borderRadius: '0.5rem',
+                        }}
+                        labelStyle={{ fontWeight: 'bold' }}
+                        formatter={(value) => [`${value}${unit}`, null]}
+                    />
+                    <Line
+                        type="monotone"
+                        dataKey={dataKey}
+                        stroke={color}
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 6, fill: color }}
+                    />
+                </LineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+
 function ForecastRow({ day, DayIcon, isToday }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>>, isToday: boolean }) {
   const displayDay = isToday ? 'Today' : format(parseISO(day.date), 'eee');
-  const displayDate = format(parseISO(day.date), 'MMM d');
 
   return (
-    <div
-      className="flex items-center justify-between bg-muted/50 p-3 rounded-lg hover:bg-muted/80 transition-colors"
-    >
-      <div className="flex items-center w-1/3">
-        <p className="font-semibold w-12">{displayDay}</p>
-        <p className="text-sm text-muted-foreground ml-2">{displayDate}</p>
+    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+      <p className="font-semibold w-16">{displayDay}</p>
+      <div className="flex items-center gap-2">
+        <DayIcon className="w-7 h-7 text-slate-400" />
+        <p className="text-sm text-slate-400 capitalize">{day.condition}</p>
       </div>
-      <div className="flex items-center justify-center w-1/3">
-        <DayIcon className="w-8 h-8 text-muted-foreground" />
-        <p className="ml-2 text-sm capitalize">{day.condition}</p>
-      </div>
-      <div className="flex items-center justify-end w-1/3">
-        <p className="font-semibold">{day.temp}°</p>
-      </div>
+      <p className="font-semibold text-right w-16">{day.temp}°</p>
     </div>
   );
 }
 
+
 function WeatherSkeleton() {
   return (
-    <Card>
+    <Card className="bg-[#1e293b] text-white border-slate-700 shadow-xl">
       <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <Skeleton className="h-6 w-48 mb-2" />
-            <Skeleton className="h-4 w-32" />
-          </div>
+        <div className="mb-4">
+          <Skeleton className="h-7 w-48 bg-slate-700" />
+          <Skeleton className="h-5 w-32 mt-2 bg-slate-700" />
         </div>
 
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <Skeleton className="w-24 h-24 rounded-full mr-4" />
+        <div className="flex flex-col md:flex-row gap-8 mb-6">
+          <div className="flex-1 flex items-center">
+            <Skeleton className="w-20 h-20 rounded-full bg-slate-700 mr-4" />
             <div>
-              <Skeleton className="h-20 w-32 mb-2" />
-              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-20 w-32 bg-slate-700" />
+              <Skeleton className="h-6 w-24 mt-2 bg-slate-700" />
             </div>
           </div>
-          <div className="space-y-2 text-right">
-            <Skeleton className="h-6 w-28 ml-auto" />
-            <Skeleton className="h-5 w-36 ml-auto" />
-            <Skeleton className="h-5 w-32 ml-auto" />
-          </div>
-        </div>
-
-        <div className="mb-8">
-          <Skeleton className="h-7 w-40 mb-4" />
-          <div className="flex space-x-4">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-36 w-24 rounded-lg flex-shrink-0" />
+          <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                    <Skeleton className="w-5 h-5 bg-slate-700"/>
+                    <div className='w-full'>
+                        <Skeleton className="h-4 w-16 bg-slate-700"/>
+                        <Skeleton className="h-5 w-12 mt-1 bg-slate-700"/>
+                    </div>
+                </div>
             ))}
           </div>
         </div>
 
-        <div>
-          <Skeleton className="h-7 w-40 mb-4" />
-          <div className="space-y-2">
+        <Tabs defaultValue="temperature" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-slate-800/80 mb-4">
+                <TabsTrigger value="temperature">Temperature</TabsTrigger>
+                <TabsTrigger value="precipitation">Precipitation</TabsTrigger>
+                <TabsTrigger value="wind">Wind</TabsTrigger>
+            </TabsList>
+            <TabsContent value="temperature">
+                <Skeleton className="h-48 w-full bg-slate-700" />
+            </TabsContent>
+        </Tabs>
+        
+        <div className="mt-6">
+          <Skeleton className="h-7 w-32 mb-2 bg-slate-700" />
+          <div className="space-y-1">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              <Skeleton key={i} className="h-12 w-full rounded-lg bg-slate-700" />
             ))}
           </div>
         </div>
@@ -317,5 +324,3 @@ function WeatherSkeleton() {
     </Card>
   );
 }
-
-    
