@@ -49,9 +49,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       if (authError.code) {
         switch (authError.code) {
           case 'auth/user-not-found':
+            errorMessage = 'This email is not registered. Please sign up.';
+            break;
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
-            errorMessage = 'Invalid email or password. Please try again.';
+            errorMessage = 'Invalid password. Please try again.';
             break;
           case 'auth/invalid-email':
             errorMessage = 'Please enter a valid email address.';
