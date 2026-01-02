@@ -28,6 +28,7 @@ export const WeatherOutputSchema = z.object({
     temperature: z.array(z.number()),
     precipitationProbability: z.array(z.number()),
     windSpeed: z.array(z.number()),
+    windDirection: z.array(z.number()),
   }),
   daily: z.object({
     time: z.array(z.string()),

@@ -57,7 +57,7 @@ const getWeatherFlow = ai.defineFlow(
     }
 
 
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto`;
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto`;
 
     const weatherData = await fetchJson(weatherUrl);
 
@@ -80,6 +80,7 @@ const getWeatherFlow = ai.defineFlow(
         temperature: weatherData.hourly.temperature_2m.slice(0, 24).map(Math.round),
         precipitationProbability: weatherData.hourly.precipitation_probability.slice(0, 24),
         windSpeed: weatherData.hourly.wind_speed_10m.slice(0, 24).map((ws: number) => Math.round(ws)),
+        windDirection: weatherData.hourly.wind_direction_10m.slice(0, 24),
       },
       daily: {
         time: weatherData.daily.time.slice(0, 7),

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WeatherIcon } from './weather-icons';
 import { HourlyWeatherChart } from './weather-chart';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { WindChart } from './wind-chart';
 
 function WeatherSkeleton() {
   return (
@@ -233,7 +234,7 @@ export default function WeatherWidget() {
                 <HourlyWeatherChart data={hourly.time.map((t, i) => ({ time: t, value: hourly.precipitationProbability[i]}))} unit="%" color="hsl(205, 87%, 55%)" />
             </TabsContent>
             <TabsContent value="wind" className="mt-4">
-                 <HourlyWeatherChart data={hourly.time.map((t, i) => ({ time: t, value: hourly.windSpeed[i]}))} unit="km/h" color="hsl(160, 84%, 39%)" />
+                 <WindChart data={hourly.time.map((t, i) => ({ time: t, speed: hourly.windSpeed[i], direction: hourly.windDirection[i] }))} />
             </TabsContent>
         </Tabs>
 
@@ -259,5 +260,3 @@ export default function WeatherWidget() {
     </Card>
   );
 }
-
-    
