@@ -7,12 +7,9 @@ import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon } f
 import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Waves } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { type WeatherOutput, getWeather, type DailyForecast, type HourlyForecast, type WeatherInput } from '@/ai/flows/weather-flow';
+import { type WeatherOutput, getWeather, type DailyForecast, type WeatherInput } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -149,24 +146,6 @@ export default function WeatherWidget() {
                            <p className="text-muted-foreground">Humidity: {weather.humidity}%</p>
                         </div>
                     </div>
-                    
-                    {weather.hourlyForecast && weather.hourlyForecast.length > 0 && (
-                        <div>
-                            <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-4">24-Hour Forecast</h3>
-                            <Carousel opts={{ align: "start" }} className="w-full">
-                                <CarouselContent>
-                                    {weather.hourlyForecast.map((hour, index) => (
-                                        <CarouselItem key={index} className="basis-1/4 sm:basis-1/5 lg:basis-1/6">
-                                            <HourlyForecastCard hour={hour} />
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious className='-left-4' />
-                                <CarouselNext className='-right-4' />
-                            </Carousel>
-                        </div>
-                    )}
-
 
                      <div>
                     <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-4">7-Day Forecast</h3>
@@ -255,28 +234,9 @@ function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<R
     <div className="flex justify-between items-center text-base font-medium p-2 rounded-md hover:bg-muted/50 transition-colors">
         <span className="w-1/3">{day.day}</span>
         <div className="w-1/3 flex items-center justify-center gap-2 text-primary">
-           {day.precipitationChance > 0 && <span className='text-sm text-blue-500 font-semibold'>{day.precipitationChance}%</span>}
             <DayIcon className="w-6 h-6" />
         </div>
-        <span className="w-1/3 text-right text-muted-foreground">{day.maxTemp}° / {day.minTemp}°</span>
-    </div>
-  );
-}
-
-
-function HourlyForecastCard({ hour }: { hour: HourlyForecast }) {
-  const HourIcon = weatherIcons[hour.condition] || SunIcon;
-  return (
-    <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/40 text-center border">
-      <p className="text-sm font-medium text-muted-foreground">{hour.time}</p>
-      <HourIcon className="w-8 h-8 text-primary" />
-      <p className="text-lg font-bold">{hour.temp}°</p>
-      {hour.rainProbability > 0 && (
-        <div className="flex items-center gap-1 text-xs text-blue-500 font-semibold">
-          <CloudRainIcon className="w-3 h-3" />
-          <span>{hour.rainProbability}%</span>
-        </div>
-      )}
+        <span className="w-1/3 text-right text-muted-foreground">{day.temp}°</span>
     </div>
   );
 }

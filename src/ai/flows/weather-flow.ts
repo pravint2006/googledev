@@ -21,24 +21,10 @@ export type WeatherInput = z.infer<typeof WeatherInputSchema>;
 
 const DailyForecastSchema = z.object({
   day: z.string().describe('The day of the week (e.g., "Monday").'),
-  minTemp: z.number().describe('The minimum temperature for the day in Celsius.'),
-  maxTemp: z.number().describe('The maximum temperature for the day in Celsius.'),
+  temp: z.number().describe('The average temperature for the day in Celsius.'),
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition.'),
-  windSpeed: z.number().describe('The wind speed in km/h.'),
-  humidity: z.number().describe('The humidity percentage.'),
-  uvIndex: z.number().describe('The UV index, from 0 to 11+.'),
-  precipitationChance: z.number().min(0).max(100).describe('The percentage chance of precipitation.'),
 });
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
-
-const HourlyForecastSchema = z.object({
-    time: z.string().describe('The specific hour for the forecast (e.g., "3 PM", "10 AM").'),
-    temp: z.number().describe('The temperature at that hour in Celsius.'),
-    condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition at that hour.'),
-    rainProbability: z.number().min(0).max(100).describe('The percentage probability of rain at that hour.')
-});
-export type HourlyForecast = z.infer<typeof HourlyForecastSchema>;
-
 
 const WeatherOutputSchema = z.object({
   city: z.string().describe("The city for which the weather is being reported, including state/region and country."),
@@ -49,8 +35,7 @@ const WeatherOutputSchema = z.object({
   condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The current weather condition.'),
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
-  hourlyForecast: z.array(HourlyForecastSchema).describe('A 24-hour weather forecast.'),
-  forecast: z.array(DailyForecastSchema).describe('A 7-day weather forecast.'),
+  forecast: z.array(DailyForecastSchema).describe('A 7-day weather forecast with day, average temperature, and condition.'),
 });
 export type WeatherOutput = z.infer<typeof WeatherOutputSchema>;
 
@@ -69,7 +54,6 @@ const prompt = ai.definePrompt({
   
   If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   
-  Return a 24-hour forecast starting from the next hour.
   Return a 7-day forecast starting from tomorrow.
   `,
 });
