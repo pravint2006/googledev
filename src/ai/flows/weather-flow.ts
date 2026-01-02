@@ -42,11 +42,13 @@ const getWeatherFlow = ai.defineFlow(
     
      // If city was not provided, use reverse geocoding to find a name
     if (!city) {
-      const reverseGeocodingUrl = `https://geocoding-api.open-meteo.com/v1/search?latitude=${latitude}&longitude=${longitude}&count=1`;
+      const reverseGeocodingUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`;
       try {
         const reverseGeoResult = await fetchJson(reverseGeocodingUrl);
-        if (reverseGeoResult.results?.[0]?.name) {
-          locationName = reverseGeoResult.results[0].name;
+        if (reverseGeoResult.city) {
+          locationName = reverseGeoResult.city;
+        } else if (reverseGeoResult.locality) {
+            locationName = reverseGeoResult.locality;
         }
       } catch (e) {
         console.warn("Reverse geocoding failed, using default name.");
