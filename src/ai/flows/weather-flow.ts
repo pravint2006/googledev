@@ -3,8 +3,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { updateUserProfile } from '@/hooks/use-user-profile';
-import { User } from 'firebase/auth';
 
 // Input schema for fetching weather, can be coordinates or a city name
 export const WeatherInputSchema = z.object({
@@ -52,9 +50,9 @@ async function fetchJson(url: string) {
   return response.json();
 }
 
-export const getWeather = ai.defineFlow(
+const getWeatherFlow = ai.defineFlow(
   {
-    name: 'getWeather',
+    name: 'getWeatherFlow',
     inputSchema: WeatherInputSchema,
     outputSchema: WeatherOutputSchema,
   },
@@ -121,3 +119,8 @@ export const getWeather = ai.defineFlow(
     };
   }
 );
+
+
+export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
+    return await getWeatherFlow(input);
+}
