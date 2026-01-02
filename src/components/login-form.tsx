@@ -24,6 +24,7 @@ import { Label } from './ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
+import { firebaseConfig } from '@/firebase/config';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
@@ -37,14 +38,14 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
+  isGoogleLoading: boolean;
+  setIsGoogleLoading: (isLoading: boolean) => void;
 }
 
-export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
+export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoading }: LoginFormProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -58,12 +59,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      // Set persistence based on the "Remember me" checkbox
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-      await setPersistence(auth, persistence);
+      await setPersistence(auth, persistence, { authDomain: firebaseConfig.authDomain });
+
 
       await signInWithEmailAndPassword(auth, email, password);
-      // The useUser hook will handle redirecting to the dashboard
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -109,15 +109,13 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             title: "Password Reset Email Sent",
             description: `If an account exists for ${resetEmail}, you will receive an email with instructions. Please check your spam folder if you do not see it.`,
         });
-        setIsResetDialogOpen(false); // Close dialog on success
+        setIsResetDialogOpen(false);
     } catch (error) {
         const authError = error as AuthError;
         let errorMessage = "An unknown error occurred. Please try again.";
         if(authError.code === 'auth/invalid-email') {
             errorMessage = "Please enter a valid email address.";
         }
-        // We don't reveal if the user exists or not for security reasons.
-        // The success message is shown even for non-existent emails.
         toast({
             variant: "destructive",
             title: "Error Sending Email",
@@ -139,11 +137,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     const provider = new GoogleAuthProvider();
     
     try {
-      // Use signInWithRedirect instead of signInWithPopup
       await signInWithRedirect(auth, provider);
-      // The user will be redirected to Google's sign-in page.
-      // After successful sign-in, they will be redirected back to your app.
-      // The logic in signup-form.tsx (via useEffect) and the useUser hook will handle the rest.
     } catch (error) {
       const authError = error as AuthError;
       toast({
@@ -151,7 +145,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         title: 'Google Sign-In Failed',
         description: authError.message || 'An unexpected error occurred.',
       });
-      setIsGoogleLoading(false); // Only set loading to false on error
+      setIsGoogleLoading(false);
     }
   };
 
@@ -169,7 +163,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <CardContent className="space-y-4">
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
             {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2" />}
-            {isGoogleLoading ? 'Signing in...' : 'Sign In with Google'}
+            {isGoogleLoading ? 'Redirecting...' : 'Sign In with Google'}
           </Button>
 
           <div className="flex items-center gap-2 py-2">
@@ -240,7 +234,6 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         </CardFooter>
       </Card>
       
-      {/* Password Reset Dialog */}
       <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -271,3 +264,5 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     </>
   );
 }
+
+    

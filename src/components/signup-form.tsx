@@ -23,11 +23,10 @@ import {
   sendEmailVerification,
   signInWithRedirect,
   GoogleAuthProvider,
-  getRedirectResult,
 } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { Separator } from './ui/separator';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -41,66 +40,19 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void;
+  isGoogleLoading: boolean;
+  setIsGoogleLoading: (isLoading: boolean) => void;
 }
 
-export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
+export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoading }: SignUpFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-
-  // Handle redirect result
-  useEffect(() => {
-    if (!auth || !firestore) return;
-    
-    // Set loading true when the component mounts to handle the redirect check
-    setIsGoogleLoading(true);
-
-    const processRedirect = async () => {
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                // User signed in.
-                const user = result.user;
-                const userDocRef = doc(firestore, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (!userDoc.exists()) {
-                    // New user, create their document
-                    const [firstName, ...lastName] = (user.displayName || "").split(" ");
-                    await setDoc(userDocRef, {
-                        id: user.uid,
-                        email: user.email,
-                        firstName: firstName || '',
-                        lastName: lastName.join(' ') || '',
-                    });
-                }
-                
-                // Redirect logic is handled by the main layout/page now.
-                // The useUser hook will pick up the signed-in state.
-            }
-        } catch (error) {
-            const authError = error as AuthError;
-            // Don't show toast for "no-redirect-results"
-            if (authError.code !== 'auth/no-redirect-results') {
-              toast({
-                  variant: 'destructive',
-                  title: 'Google Sign-In Failed',
-                  description: authError.message || 'An unexpected error occurred during redirect.',
-              });
-            }
-        } finally {
-            setIsGoogleLoading(false); // Stop loading indicator
-        }
-    };
-    
-    processRedirect();
-  }, [auth, firestore, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,12 +80,10 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         const user = userCredential.user;
         const [firstName, ...lastName] = displayName.split(' ');
         
-        // 1. Update auth profile
         await updateProfile(user, {
           displayName: displayName,
         });
 
-        // 2. Create user document in Firestore
         const userDocRef = doc(firestore, 'users', user.uid);
         await setDoc(userDocRef, {
           id: user.uid,
@@ -142,7 +92,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
           lastName: lastName.join(' ') || '',
         });
         
-        // 3. Send verification email
         await sendEmailVerification(user);
       }
       
@@ -150,7 +99,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",
       });
-      // Redirect to the verification page instead of the dashboard
       router.push('/verify-email');
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
@@ -191,7 +139,6 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     const provider = new GoogleAuthProvider();
 
     try {
-        // This will redirect the user to Google's sign-in page
         await signInWithRedirect(auth, provider);
     } catch (error) {
       const authError = error as AuthError;
@@ -218,7 +165,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
       <CardContent className="space-y-4">
         <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isLoading || isGoogleLoading}>
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2" />}
-          {isGoogleLoading ? 'Signing in...' : 'Sign Up with Google'}
+          {isGoogleLoading ? 'Redirecting...' : 'Sign Up with Google'}
         </Button>
 
         <div className="flex items-center gap-2 py-2">
@@ -284,3 +231,5 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     </Card>
   );
 }
+
+    
