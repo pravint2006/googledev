@@ -77,9 +77,9 @@ export default function LoginPage() {
   // will be handling the redirect away from this page shortly.
   if (isUserLoading || isProcessingRedirect || user) {
     return (
-       <main className="flex min-h-screen items-center justify-center p-4">
+       <div className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </main>
+      </div>
     )
   }
 
