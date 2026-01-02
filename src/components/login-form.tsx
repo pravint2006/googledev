@@ -60,7 +60,7 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
 
     try {
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-      await setPersistence(auth, persistence, { authDomain: firebaseConfig.authDomain });
+      await setPersistence(auth, persistence);
 
 
       await signInWithEmailAndPassword(auth, email, password);
@@ -264,5 +264,3 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
     </>
   );
 }
-
-    

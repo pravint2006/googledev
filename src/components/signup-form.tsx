@@ -231,5 +231,3 @@ export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoadin
     </Card>
   );
 }
-
-    
