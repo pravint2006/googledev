@@ -63,7 +63,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await setPersistence(auth, persistence);
 
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      // The useUser hook will handle redirecting to the dashboard
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -143,7 +143,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await signInWithRedirect(auth, provider);
       // The user will be redirected to Google's sign-in page.
       // After successful sign-in, they will be redirected back to your app.
-      // The onAuthStateChanged listener will then handle routing.
+      // The logic in signup-form.tsx (via useEffect) and the useUser hook will handle the rest.
     } catch (error) {
       const authError = error as AuthError;
       toast({
@@ -169,7 +169,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <CardContent className="space-y-4">
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
             {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2" />}
-            {isGoogleLoading ? 'Redirecting...' : 'Sign In with Google'}
+            {isGoogleLoading ? 'Signing in...' : 'Sign In with Google'}
           </Button>
 
           <div className="flex items-center gap-2 py-2">

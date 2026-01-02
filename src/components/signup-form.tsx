@@ -58,6 +58,9 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
   useEffect(() => {
     if (!auth || !firestore) return;
     
+    // Set loading true when the component mounts to handle the redirect check
+    setIsGoogleLoading(true);
+
     const processRedirect = async () => {
         try {
             const result = await getRedirectResult(auth);
@@ -79,22 +82,25 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                 }
                 
                 // Redirect logic is handled by the main layout/page now.
-                // router.push('/dashboard'); 
+                // The useUser hook will pick up the signed-in state.
             }
         } catch (error) {
             const authError = error as AuthError;
-            toast({
-                variant: 'destructive',
-                title: 'Google Sign-In Failed',
-                description: authError.message || 'An unexpected error occurred during redirect.',
-            });
+            // Don't show toast for "no-redirect-results"
+            if (authError.code !== 'auth/no-redirect-results') {
+              toast({
+                  variant: 'destructive',
+                  title: 'Google Sign-In Failed',
+                  description: authError.message || 'An unexpected error occurred during redirect.',
+              });
+            }
         } finally {
             setIsGoogleLoading(false); // Stop loading indicator
         }
     };
     
     processRedirect();
-  }, [auth, firestore, router, toast]);
+  }, [auth, firestore, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +218,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
       <CardContent className="space-y-4">
         <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isLoading || isGoogleLoading}>
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2" />}
-          {isGoogleLoading ? 'Redirecting...' : 'Sign Up with Google'}
+          {isGoogleLoading ? 'Signing in...' : 'Sign Up with Google'}
         </Button>
 
         <div className="flex items-center gap-2 py-2">
