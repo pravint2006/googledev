@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { getWeather } from '@/ai/flows/weather-flow';
@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WeatherIcon } from './weather-icons';
 import { HourlyWeatherChart } from './weather-chart';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 function WeatherSkeleton() {
   return (
@@ -24,12 +25,20 @@ function WeatherSkeleton() {
   );
 }
 
+const libraries: ('places')[] = ['places'];
+
 export default function WeatherWidget() {
   const { userProfile, updateUserProfile } = useUserProfile();
   const [weatherData, setWeatherData] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState('');
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
+    libraries,
+  });
 
   const fetchWeather = async (params: { latitude?: number; longitude?: number; city?: string } = {}) => {
     setLoading(true);
@@ -67,7 +76,7 @@ export default function WeatherWidget() {
             (err) => {
                 // 3. If geolocation fails, set a default city (e.g., London)
                 console.warn('Geolocation failed:', err.message);
-                fetchWeather({ city: 'London' });
+                fetchWeather({ city: 'Delhi' }); // Default to a major city in India
             },
             { timeout: 10000 }
         );
@@ -78,6 +87,21 @@ export default function WeatherWidget() {
     e.preventDefault();
     if (citySearch.trim()) {
       fetchWeather({ city: citySearch.trim() });
+    }
+  };
+
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        const city = place.name;
+        if(city) {
+            setCitySearch(city);
+            fetchWeather({ city });
+        }
     }
   };
   
@@ -120,16 +144,39 @@ export default function WeatherWidget() {
 
   const { current, hourly, daily, locationName, timezone } = weatherData;
 
+  const renderSearch = () => {
+    if (!isLoaded) {
+      return <Input placeholder="Loading search..." disabled className="bg-slate-700/50 border-slate-600 text-white h-9 text-sm w-full max-w-xs" />
+    }
+    return (
+        <Autocomplete
+            onLoad={onAutocompleteLoad}
+            onPlaceChanged={onPlaceChanged}
+            options={{
+                types: ['(cities)'],
+                componentRestrictions: { country: 'in' },
+            }}
+        >
+            <Input 
+              value={citySearch} 
+              onChange={(e) => setCitySearch(e.target.value)} 
+              placeholder="Search for a city in India..." 
+              className="bg-slate-700/50 border-slate-600 text-white h-9 text-sm w-full"
+            />
+        </Autocomplete>
+    );
+  }
+
   return (
     <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-4">
             <div>
                 <p className="flex items-center gap-1"><MapPin size={14} />{locationName}</p>
                 <p className="text-xs text-slate-400">{format(new Date(), "eeee, MMMM d 'at' h:mm a")}</p>
             </div>
             <form onSubmit={handleSearch} className="flex gap-2 w-full max-w-xs">
-                <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Search for a city..." className="bg-slate-700/50 border-slate-600 text-white h-9 text-sm" />
-                <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-slate-700"><Search size={16} /></Button>
+              {renderSearch()}
+              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-slate-700"><Search size={16} /></Button>
             </form>
         </div>
 
