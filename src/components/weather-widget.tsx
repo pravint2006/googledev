@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { WeatherOutput, getWeather } from '@/ai/flows/weather-flow';
+import { getWeather } from '@/ai/flows/weather-flow';
+import { WeatherOutput } from '@/ai/flows/weather-types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
