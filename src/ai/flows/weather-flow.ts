@@ -140,7 +140,7 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             feelsLike: Math.round(current.temperatureApparent),
             condition: mapWeatherCode(current.weatherCode),
             windSpeed: parseFloat(current.windSpeed.toFixed(1)),
-            humidity: Math.round(current.humidity * 100),
+            humidity: Math.round(current. humidity * 100),
             forecast: dailyForecast.days.slice(0, 7).map((day: any) => ({
                 day: format(parseISO(day.date), 'eeee'),
                 date: `${day.date.year}-${String(day.date.month).padStart(2,'0')}-${String(day.date.day).padStart(2,'0')}`,
