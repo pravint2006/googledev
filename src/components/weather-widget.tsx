@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
@@ -135,7 +136,72 @@ export default function WeatherWidget() {
       };
       return descriptions[code] || 'Unknown';
   };
+  
+    // All hooks must be called before this point.
+  const displayData = useMemo(() => {
+    if (!weatherData) return null;
+    const { current, daily } = weatherData;
 
+    if (selectedDayIndex === 0) {
+      return {
+        temp: current.temperature,
+        weatherCode: current.weatherCode,
+        isDay: current.isDay === 1,
+        description: weatherDescription(current.weatherCode),
+        humidity: current.humidity,
+        windSpeed: current.windSpeed,
+        highTemp: daily.temperatureMax[0],
+        lowTemp: daily.temperatureMin[0],
+      };
+    }
+    const selectedDaily = daily;
+    return {
+      temp: selectedDaily.temperatureMax[selectedDayIndex],
+      weatherCode: selectedDaily.weatherCode[selectedDayIndex],
+      isDay: true, // For future days, assume day time for icon
+      description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
+      humidity: null, // Not available for future daily forecasts
+      windSpeed: null,
+      highTemp: selectedDaily.temperatureMax[selectedDayIndex],
+      lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
+    };
+  }, [selectedDayIndex, weatherData]);
+
+  const hourlyDataForChart = useMemo(() => {
+    if (!weatherData) return [];
+    const { hourly } = weatherData;
+    const startIndex = selectedDayIndex * 24;
+    const endIndex = startIndex + 24;
+    return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+      time: t,
+      value: hourly.temperature[startIndex + i],
+    }));
+  }, [selectedDayIndex, weatherData]);
+  
+  const hourlyPrecipitationData = useMemo(() => {
+      if (!weatherData) return [];
+      const { hourly } = weatherData;
+      const startIndex = selectedDayIndex * 24;
+      const endIndex = startIndex + 24;
+      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+          time: t,
+          value: hourly.precipitationProbability[startIndex + i],
+      }));
+  }, [selectedDayIndex, weatherData]);
+
+  const hourlyWindData = useMemo(() => {
+      if (!weatherData) return [];
+      const { hourly } = weatherData;
+      const startIndex = selectedDayIndex * 24;
+      const endIndex = startIndex + 24;
+      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
+          time: t,
+          speed: hourly.windSpeed[startIndex + i],
+          direction: hourly.windDirection[startIndex + i],
+      }));
+  }, [selectedDayIndex, weatherData]);
+  
+  // Conditional returns now happen after all hooks have been called.
   if (loading) {
     return <WeatherSkeleton />;
   }
@@ -168,11 +234,11 @@ export default function WeatherWidget() {
     );
   }
 
-  if (!weatherData) {
+  if (!weatherData || !displayData) {
     return null;
   }
-
-  const { current, hourly, daily, locationName, timezone } = weatherData;
+  
+  const { daily, locationName } = weatherData;
 
   const renderSearch = () => {
     if (!isLoaded) {
@@ -197,64 +263,6 @@ export default function WeatherWidget() {
         </Autocomplete>
     );
   }
-
-  const isDaySelected = selectedDayIndex === 0 && current.isDay === 1;
-
-  // Derive display data based on selected day
-  const displayData = useMemo(() => {
-    if (selectedDayIndex === 0) {
-      return {
-        temp: current.temperature,
-        weatherCode: current.weatherCode,
-        isDay: current.isDay === 1,
-        description: weatherDescription(current.weatherCode),
-        humidity: current.humidity,
-        windSpeed: current.windSpeed,
-        highTemp: daily.temperatureMax[0],
-        lowTemp: daily.temperatureMin[0],
-      };
-    }
-    const selectedDaily = daily;
-    return {
-      temp: selectedDaily.temperatureMax[selectedDayIndex],
-      weatherCode: selectedDaily.weatherCode[selectedDayIndex],
-      isDay: true, // For future days, assume day time for icon
-      description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
-      humidity: null, // Not available for future daily forecasts
-      windSpeed: null,
-      highTemp: selectedDaily.temperatureMax[selectedDayIndex],
-      lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
-    };
-  }, [selectedDayIndex, current, daily]);
-
-  const hourlyDataForChart = useMemo(() => {
-    const startIndex = selectedDayIndex * 24;
-    const endIndex = startIndex + 24;
-    return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
-      time: t,
-      value: hourly.temperature[startIndex + i],
-    }));
-  }, [selectedDayIndex, hourly]);
-  
-  const hourlyPrecipitationData = useMemo(() => {
-      const startIndex = selectedDayIndex * 24;
-      const endIndex = startIndex + 24;
-      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
-          time: t,
-          value: hourly.precipitationProbability[startIndex + i],
-      }));
-  }, [selectedDayIndex, hourly]);
-
-  const hourlyWindData = useMemo(() => {
-      const startIndex = selectedDayIndex * 24;
-      const endIndex = startIndex + 24;
-      return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
-          time: t,
-          speed: hourly.windSpeed[startIndex + i],
-          direction: hourly.windDirection[startIndex + i],
-      }));
-  }, [selectedDayIndex, hourly]);
-
 
   return (
     <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
@@ -329,3 +337,5 @@ export default function WeatherWidget() {
     </Card>
   );
 }
+
+    
