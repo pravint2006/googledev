@@ -47,7 +47,8 @@ export default function WeatherWidget() {
       const data = await getWeather(params);
       setWeatherData(data);
       if (data) {
-        updateUserProfile({ lastWeatherLocation: { latitude: data.latitude, longitude: data.longitude, city: params.city || data.locationName }});
+        // When updating profile, use the name returned by our weather flow for consistency
+        updateUserProfile({ lastWeatherLocation: { latitude: data.latitude, longitude: data.longitude, city: data.locationName }});
       }
     } catch (e: any) {
       setError(e.message || 'Could not load weather data.');
@@ -63,6 +64,9 @@ export default function WeatherWidget() {
             fetchWeather({ city: userProfile.lastWeatherLocation.city });
         } else if (userProfile.lastWeatherLocation.latitude && userProfile.lastWeatherLocation.longitude){
             fetchWeather({ latitude: userProfile.lastWeatherLocation.latitude, longitude: userProfile.lastWeatherLocation.longitude });
+        } else {
+             // Fallback if profile data is incomplete
+            fetchWeather({ city: 'Delhi' });
         }
     } else {
         // 2. Fallback to browser geolocation
@@ -81,7 +85,7 @@ export default function WeatherWidget() {
             { timeout: 10000 }
         );
     }
-  }, [userProfile]);
+  }, []); // Changed dependency to run only once on initial load
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,10 +101,18 @@ export default function WeatherWidget() {
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
         const place = autocompleteRef.current.getPlace();
-        const city = place.name;
-        if(city) {
+        
+        if (place.geometry?.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            const city = place.name;
             setCitySearch(city);
-            fetchWeather({ city });
+            // Fetch weather using precise coordinates instead of just the name
+            fetchWeather({ latitude: lat, longitude: lng });
+        } else if (place.name) {
+            // Fallback to name search if geometry is not available
+            setCitySearch(place.name);
+            fetchWeather({ city: place.name });
         }
     }
   };
@@ -128,10 +140,25 @@ export default function WeatherWidget() {
   if (error) {
     return (
         <Card className="bg-slate-800/80 text-white border-destructive/50 p-6">
-            <AlertTitle className="text-destructive">Could Not Load Weather</AlertTitle>
-            <AlertDescription className="text-red-300">{error}</AlertDescription>
+             <Alert variant="destructive" className='border-0 text-white'>
+                <AlertTitle className="text-red-400">Could Not Load Weather</AlertTitle>
+                <AlertDescription className="text-red-300/90">{error}</AlertDescription>
+            </Alert>
             <form onSubmit={handleSearch} className="flex gap-2 mt-4">
-                <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Try another city..." className="bg-slate-700/50 border-slate-600 text-white" />
+                 {isLoaded ? (
+                    <Autocomplete
+                        onLoad={onAutocompleteLoad}
+                        onPlaceChanged={onPlaceChanged}
+                        options={{
+                            types: ['(cities)'],
+                            componentRestrictions: { country: 'in' },
+                        }}
+                    >
+                        <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Try another city..." className="bg-slate-700/50 border-slate-600 text-white" />
+                    </Autocomplete>
+                ) : (
+                    <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Search..." className="bg-slate-700/50 border-slate-600 text-white" />
+                )}
                 <Button type="submit" variant="secondary">Search</Button>
             </form>
         </Card>
@@ -155,6 +182,7 @@ export default function WeatherWidget() {
             options={{
                 types: ['(cities)'],
                 componentRestrictions: { country: 'in' },
+                fields: ['geometry', 'name'] // Request geometry to get lat/lng
             }}
         >
             <Input 
@@ -231,3 +259,5 @@ export default function WeatherWidget() {
     </Card>
   );
 }
+
+    
