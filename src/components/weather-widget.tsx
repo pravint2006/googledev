@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
@@ -31,13 +30,15 @@ function WeatherSkeleton() {
 const libraries: ('places')[] = ['places'];
 
 export default function WeatherWidget() {
-  const { userProfile, updateUserProfile } = useUserProfile();
+  const { userProfile } = useUserProfile();
   const [weatherData, setWeatherData] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+
+  const { updateUserProfile } = useUserProfile();
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
@@ -50,7 +51,7 @@ export default function WeatherWidget() {
     try {
       const data = await getWeather(params);
       setWeatherData(data);
-      if (data) {
+       if (data) {
         // When updating profile, use the name returned by our weather flow for consistency
         updateUserProfile({ lastWeatherLocation: { latitude: data.latitude, longitude: data.longitude, city: data.locationName }});
       }
@@ -72,7 +73,7 @@ export default function WeatherWidget() {
              // Fallback if profile data is incomplete
             fetchWeather({ city: 'Delhi' });
         }
-    } else {
+    } else if (userProfile === null) { // Check for explicit null, not undefined during loading
         // 2. Fallback to browser geolocation
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -82,14 +83,14 @@ export default function WeatherWidget() {
                 });
             },
             (err) => {
-                // 3. If geolocation fails, set a default city (e.g., London)
+                // 3. If geolocation fails, set a default city
                 console.warn('Geolocation failed:', err.message);
                 fetchWeather({ city: 'Delhi' }); // Default to a major city in India
             },
             { timeout: 10000 }
         );
     }
-  }, []); // Changed dependency to run only once on initial load
+  }, [userProfile]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,12 +157,12 @@ export default function WeatherWidget() {
     }
     const selectedDaily = daily;
     return {
-      temp: selectedDaily.temperatureMax[selectedDayIndex],
+      temp: selectedDaily.temperatureMax[selectedDayIndex], // Show high temp for future days
       weatherCode: selectedDaily.weatherCode[selectedDayIndex],
       isDay: true, // For future days, assume day time for icon
       description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
       humidity: null, // Not available for future daily forecasts
-      windSpeed: null,
+      windSpeed: null, // Not available for future daily forecasts
       highTemp: selectedDaily.temperatureMax[selectedDayIndex],
       lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
     };
@@ -172,6 +173,8 @@ export default function WeatherWidget() {
     const { hourly } = weatherData;
     const startIndex = selectedDayIndex * 24;
     const endIndex = startIndex + 24;
+    // Check if the slices exist before mapping
+    if (hourly.time.length < endIndex || hourly.temperature.length < endIndex) return [];
     return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
       time: t,
       value: hourly.temperature[startIndex + i],
@@ -183,6 +186,8 @@ export default function WeatherWidget() {
       const { hourly } = weatherData;
       const startIndex = selectedDayIndex * 24;
       const endIndex = startIndex + 24;
+      // Check if the slices exist before mapping
+      if (hourly.time.length < endIndex || hourly.precipitationProbability.length < endIndex) return [];
       return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
           time: t,
           value: hourly.precipitationProbability[startIndex + i],
@@ -194,51 +199,14 @@ export default function WeatherWidget() {
       const { hourly } = weatherData;
       const startIndex = selectedDayIndex * 24;
       const endIndex = startIndex + 24;
+      // Check if the slices exist before mapping
+      if (hourly.time.length < endIndex || hourly.windSpeed.length < endIndex || hourly.windDirection.length < endIndex) return [];
       return hourly.time.slice(startIndex, endIndex).map((t, i) => ({
           time: t,
           speed: hourly.windSpeed[startIndex + i],
           direction: hourly.windDirection[startIndex + i],
       }));
   }, [selectedDayIndex, weatherData]);
-  
-  // Conditional returns now happen after all hooks have been called.
-  if (loading) {
-    return <WeatherSkeleton />;
-  }
-
-  if (error) {
-    return (
-        <Card className="bg-slate-800/80 text-white border-destructive/50 p-6">
-             <Alert variant="destructive" className='border-0 text-white'>
-                <AlertTitle className="text-red-400">Could Not Load Weather</AlertTitle>
-                <AlertDescription className="text-red-300/90">{error}</AlertDescription>
-            </Alert>
-            <form onSubmit={handleSearch} className="flex gap-2 mt-4">
-                 {isLoaded ? (
-                    <Autocomplete
-                        onLoad={onAutocompleteLoad}
-                        onPlaceChanged={onPlaceChanged}
-                        options={{
-                            types: ['(cities)'],
-                            componentRestrictions: { country: 'in' },
-                        }}
-                    >
-                        <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Try another city..." className="bg-slate-700/50 border-slate-600 text-white" />
-                    </Autocomplete>
-                ) : (
-                    <Input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Search..." className="bg-slate-700/50 border-slate-600 text-white" />
-                )}
-                <Button type="submit" variant="secondary">Search</Button>
-            </form>
-        </Card>
-    );
-  }
-
-  if (!weatherData || !displayData) {
-    return null;
-  }
-  
-  const { daily, locationName } = weatherData;
 
   const renderSearch = () => {
     if (!isLoaded) {
@@ -262,7 +230,34 @@ export default function WeatherWidget() {
             />
         </Autocomplete>
     );
+  };
+  
+  // Conditional returns now happen after all hooks have been called.
+  if (loading) {
+    return <WeatherSkeleton />;
   }
+
+  if (error) {
+    return (
+        <Card className="bg-slate-800/80 text-white border-destructive/50 p-6">
+             <Alert variant="destructive" className='border-0 text-white'>
+                <AlertTitle className="text-red-400">Could Not Load Weather</AlertTitle>
+                <AlertDescription className="text-red-300/90">{error}</AlertDescription>
+            </Alert>
+            <form onSubmit={handleSearch} className="flex gap-2 mt-4">
+                 {renderSearch()}
+                <Button type="submit" variant="secondary">Search</Button>
+            </form>
+        </Card>
+    );
+  }
+
+  if (!weatherData || !displayData) {
+    return null;
+  }
+  
+  const { daily, locationName } = weatherData;
+
 
   return (
     <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
@@ -308,34 +303,30 @@ export default function WeatherWidget() {
         </Tabs>
 
         <div className="mt-6 border-t border-slate-700/50 pt-4">
-             <ScrollArea className="w-full whitespace-nowrap">
-                <div className="flex w-max space-x-1 pb-2">
-                    {daily.time.map((day, i) => {
-                        const dayDate = parseISO(day);
-                        return (
-                            <button
-                                key={day}
-                                onClick={() => setSelectedDayIndex(i)}
-                                className={cn(
-                                    'flex flex-col items-center gap-1 rounded-lg p-2 text-center w-20 transition-colors duration-200',
-                                    selectedDayIndex === i ? 'bg-slate-700/60' : 'hover:bg-slate-700/30'
-                                )}
-                            >
-                                <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
-                                <WeatherIcon weatherCode={daily.weatherCode[i]} isDay={true} className="w-8 h-8 my-1" />
-                                <p className="text-sm">
-                                    <span className="font-semibold">{daily.temperatureMax[i]}°</span>
-                                    <span className="text-slate-400 ml-1">{daily.temperatureMin[i]}°</span>
-                                </p>
-                            </button>
-                        );
-                    })}
-                </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+             <div className="grid grid-cols-7 gap-1">
+                {daily.time.map((day, i) => {
+                    const dayDate = parseISO(day);
+                    return (
+                        <button
+                            key={day}
+                            onClick={() => setSelectedDayIndex(i)}
+                            className={cn(
+                                'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors duration-200',
+                                selectedDayIndex === i ? 'bg-slate-700/60' : 'hover:bg-slate-700/30'
+                            )}
+                        >
+                            <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
+                            <p className="text-xs text-slate-400">{format(dayDate, 'd')}</p>
+                            <WeatherIcon weatherCode={daily.weatherCode[i]} isDay={true} className="w-8 h-8 my-1" />
+                            <p className="text-sm">
+                                <span className="font-semibold">{daily.temperatureMax[i]}°</span>
+                                <span className="text-slate-400 ml-1">{daily.temperatureMin[i]}°</span>
+                            </p>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     </Card>
   );
 }
-
-    
