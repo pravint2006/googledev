@@ -5,7 +5,13 @@ import { useMemo } from 'react';
 import { useUser, useFirestore, useDoc, type User } from '@/firebase';
 import { doc, updateDoc, setDoc, getDoc, DocumentReference } from 'firebase/firestore';
 import { useToast } from './use-toast';
-import { type WeatherInput } from '@/ai/flows/weather-flow';
+
+// Define the shape of the location data we will store
+export interface WeatherLocation {
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+}
 
 // Define the shape of the user profile document in Firestore
 export interface UserProfile {
@@ -13,7 +19,7 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  lastWeatherLocation?: WeatherInput;
+  lastWeatherLocation?: WeatherLocation;
 }
 
 /**
@@ -42,16 +48,13 @@ export function useUserProfile() {
    */
   const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (!userDocRef) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'User is not authenticated.',
-      });
+      // Don't show a toast, just log it. This can happen during initial load.
+      console.log('User profile update skipped: user not authenticated.');
       return;
     }
 
     try {
-      // Use updateDoc with merge: true to update or create the document.
+      // Use setDoc with merge to update or create the document.
       await setDoc(userDocRef, data, { merge: true });
     } catch (e) {
       console.error('Error updating user profile:', e);
@@ -75,3 +78,6 @@ export function useUserProfile() {
     isLoading: isUserLoading || isProfileLoading,
   };
 }
+
+// Export the function to be used in server-side flows
+export { updateUserProfile as serverUpdateUserProfile } from '@/hooks/use-user-profile';

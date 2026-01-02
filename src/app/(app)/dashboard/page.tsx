@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { PlusCircle, Tractor } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FarmCard from '@/components/farm-card';
+import WeatherWidget from '@/components/weather-widget';
 
 export default function DashboardPage() {
   const { farms, isLoading } = useFarmStore();
@@ -20,7 +21,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's an overview of your farms.
+            Welcome back! Here's an overview of your farms and local weather.
           </p>
         </div>
         <Button asChild>
@@ -30,6 +31,8 @@ export default function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      <WeatherWidget />
 
       {isLoading ? (
          <div className="border-t pt-8">
