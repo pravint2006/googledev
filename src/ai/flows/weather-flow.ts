@@ -93,21 +93,19 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     try {
         const { lat, lng } = await getGeocodedLocation(input, apiKey);
 
-        const weatherParams = 'currentConditions,forecast';
-        const forecastParams = 'temperature,temperatureApparent,weatherCode,windSpeed,humidity,precipitationProbability';
-        const weatherUrl = `https://weather.googleapis.com/v1/forecast?location=${lat},${lng}&days=7&languageCode=en&units=METRIC&params=${forecastParams}`;
+        const requests = 'currentConditions,dailyForecast,hourlyForecast';
+        const weatherUrl = `https://weather.googleapis.com/v1/weather:get?location.latitude=${lat}&location.longitude=${lng}&requests=${requests}&days=7&units=METRIC&languageCode=en`;
 
         const weatherResponse = await fetch(weatherUrl, {
             headers: {
                 'X-Goog-Api-Key': apiKey,
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
         });
 
         if (!weatherResponse.ok) {
             const errorBody = await weatherResponse.text();
             console.error("Weather API Error:", errorBody);
-            // Check for specific error message indicating API is not enabled
             if (errorBody.includes("Weather API has not been used in project")) {
                  throw new Error("The Weather API is not enabled for your API key. Please enable it in the Google Cloud Console.");
             }
@@ -116,7 +114,6 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
 
         const weatherData = await weatherResponse.json();
         
-        // Reverse geocode to get city, district, pincode
         const reverseGeocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
         const reverseGeocodeResponse = await fetch(reverseGeocodeUrl);
         const reverseGeocodeData = await reverseGeocodeResponse.json();
@@ -132,7 +129,7 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             pincode = components.find((c: any) => c.types.includes('postal_code'))?.long_name || pincode;
         }
 
-        const { dailyForecast, hourlyForecasts, currentConditions } = weatherData;
+        const { dailyForecast, hourlyForecast, currentConditions } = weatherData;
         const current = currentConditions;
 
         return {
@@ -143,24 +140,23 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             feelsLike: Math.round(current.temperatureApparent),
             condition: mapWeatherCode(current.weatherCode),
             windSpeed: parseFloat(current.windSpeed.toFixed(1)),
-            humidity: Math.round(current.humidity),
-            forecast: dailyForecast.slice(0, 7).map((day: any) => ({
+            humidity: Math.round(current.humidity * 100),
+            forecast: dailyForecast.days.slice(0, 7).map((day: any) => ({
                 day: format(parseISO(day.date), 'eeee'),
                 date: `${day.date.year}-${String(day.date.month).padStart(2,'0')}-${String(day.date.day).padStart(2,'0')}`,
                 temp: Math.round(day.temperature.average),
                 condition: mapWeatherCode(day.weatherCode.max),
             })),
-            hourlyForecast: hourlyForecasts.slice(0, 24).map((hour: any) => ({
+            hourlyForecast: hourlyForecast.hours.slice(0, 24).map((hour: any) => ({
                 time: format(parseISO(hour.dateTime), 'h a'),
                 temp: Math.round(hour.temperature),
                 condition: mapWeatherCode(hour.weatherCode),
-                rainProbability: Math.round(hour.precipitationProbability * 100),
+                rainProbability: Math.round(hour.precipitation.probability * 100),
             })),
         };
 
     } catch (error) {
         console.error("Error in getWeather flow:", error);
-        // Re-throw the error so the client-side can catch it
         if (error instanceof Error) {
             throw new Error(error.message || "An unknown error occurred while fetching weather data.");
         }
