@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 // Forcing a server restart to load env variables.
