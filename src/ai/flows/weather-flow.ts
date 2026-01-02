@@ -27,6 +27,14 @@ const DailyForecastSchema = z.object({
 });
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 
+const HourlyForecastSchema = z.object({
+    time: z.string().describe('The hour for the forecast (e.g., "4 PM", "12 AM").'),
+    temp: z.number().describe('The temperature for the hour in Celsius.'),
+    condition: z.enum(['Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Partly Cloudy', 'Thunderstorms', 'Hazy']).describe('The weather condition.'),
+    rainProbability: z.number().min(0).max(100).describe('The probability of rain as a percentage (0-100).'),
+});
+export type HourlyForecast = z.infer<typeof HourlyForecastSchema>;
+
 const WeatherOutputSchema = z.object({
   city: z.string().describe("The city for which the weather is being reported, including state/region and country."),
   district: z.string().describe('The district or county for the location.'),
@@ -37,6 +45,7 @@ const WeatherOutputSchema = z.object({
   windSpeed: z.number().describe('The wind speed in km/h.'),
   humidity: z.number().describe('The humidity percentage.'),
   forecast: z.array(DailyForecastSchema).describe('A 7-day weather forecast with day, average temperature, and condition.'),
+  hourlyForecast: z.array(HourlyForecastSchema).describe('A 24-hour forecast with time, temperature, condition, and rain probability.'),
 });
 export type WeatherOutput = z.infer<typeof WeatherOutputSchema>;
 
@@ -56,7 +65,7 @@ const prompt = ai.definePrompt({
   
   If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   
-  Return a 7-day forecast starting from tomorrow.
+  Return a 7-day daily forecast and a 24-hour hourly forecast.
   `,
 });
 

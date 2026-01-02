@@ -1,4 +1,4 @@
-import { Sun, Cloud, CloudRain, CloudLightning, CloudFog } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudLightning, CloudFog, Umbrella } from 'lucide-react';
 import { SVGProps } from 'react';
 
 // Re-exporting for consistency
@@ -7,3 +7,4 @@ export const CloudIcon = Cloud;
 export const CloudRainIcon = CloudRain;
 export const CloudLightningIcon = CloudLightning;
 export const CloudFogIcon = CloudFog;
+export const UmbrellaIcon = Umbrella;

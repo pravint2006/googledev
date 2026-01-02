@@ -3,13 +3,15 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon } from './weather-icons';
-import { Loader2, Wind, Droplets, AlertCircle, MapPin, Building, LocateFixed, Edit, Waves } from 'lucide-react';
+import { SunIcon, CloudIcon, CloudRainIcon, CloudLightningIcon, CloudFogIcon, UmbrellaIcon } from './weather-icons';
+import { Loader2, Wind, Droplets, AlertCircle, MapPin, LocateFixed, Edit } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { type WeatherOutput, getWeather, type DailyForecast, type WeatherInput } from '@/ai/flows/weather-flow';
+import { type WeatherOutput, getWeather, type DailyForecast, type WeatherInput, type HourlyForecast } from '@/ai/flows/weather-flow';
 import { Skeleton } from './ui/skeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from './ui/carousel';
+import { cn } from '@/lib/utils';
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -120,44 +122,60 @@ export default function WeatherWidget() {
         }
         const CurrentWeatherIcon = weatherIcons[weather.condition] || SunIcon;
         return (
-            <div className="relative text-foreground">
-                <div className='p-6 relative z-10 space-y-8'>
-                    <div className='flex justify-between items-start'>
+            <div className="relative text-foreground p-6 space-y-8">
+                <div className='flex justify-between items-start'>
+                    <div>
+                        <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
+                        <CardDescription className='text-muted-foreground font-semibold'>{weather.district} - {weather.pincode}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={resetWidget}>
+                        Change
+                    </Button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-6 justify-between">
+                    <div className="flex items-center gap-4">
+                        <CurrentWeatherIcon className="w-20 h-20 text-primary" />
                         <div>
-                            <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
-                            <CardDescription className='text-muted-foreground font-semibold'>{weather.district} - {weather.pincode}</CardDescription>
+                        <p className="text-7xl font-bold">{Math.round(weather.currentTemp)}°</p>
+                        <p className="text-muted-foreground font-medium">{weather.condition}</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={resetWidget}>
-                            Change
-                        </Button>
                     </div>
+                    <div className="text-left sm:text-right">
+                       <p className="text-lg">Feels like {Math.round(weather.feelsLike)}°</p>
+                       <p className="text-muted-foreground">Wind: {weather.windSpeed} km/h</p>
+                       <p className="text-muted-foreground">Humidity: {weather.humidity}%</p>
+                    </div>
+                </div>
 
-                    <div className="flex flex-col sm:flex-row gap-6 justify-between">
-                        <div className="flex items-center gap-4">
-                            <CurrentWeatherIcon className="w-20 h-20 text-primary" />
-                            <div>
-                            <p className="text-7xl font-bold">{weather.currentTemp}°</p>
-                            <p className="text-muted-foreground font-medium">{weather.condition}</p>
-                            </div>
-                        </div>
-                        <div className="text-left sm:text-right">
-                           <p className="text-lg">Feels like {weather.feelsLike}°</p>
-                           <p className="text-muted-foreground">Wind: {weather.windSpeed} km/h</p>
-                           <p className="text-muted-foreground">Humidity: {weather.humidity}%</p>
-                        </div>
-                    </div>
+                 <div>
+                    <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-6">24-Hour Forecast</h3>
+                    <Carousel opts={{ align: "start" }} className="w-full">
+                        <CarouselContent>
+                            {weather.hourlyForecast.map((hour, index) => {
+                                const HourIcon = weatherIcons[hour.condition] || SunIcon;
+                                return (
+                                <CarouselItem key={index} className="basis-1/4 sm:basis-1/5 md:basis-1/6 lg:basis-1/8">
+                                    <HourlyForecastCard hour={hour} HourIcon={HourIcon} />
+                                </CarouselItem>
+                                );
+                            })}
+                        </CarouselContent>
+                        <CarouselPrevious className='-left-4' />
+                        <CarouselNext className='-right-4' />
+                    </Carousel>
+                </div>
 
-                     <div>
-                    <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-4">7-Day Forecast</h3>
-                    <div className="space-y-2">
-                        {weather.forecast.map((day, index) => {
-                          const DayIcon = weatherIcons[day.condition] || SunIcon;
-                          return (
-                            <ForecastRow key={index} day={day} DayIcon={DayIcon} />
-                          );
-                        })}
-                    </div>
-                    </div>
+                 <div>
+                <h3 className="font-semibold mb-4 text-foreground/90 border-t pt-6">7-Day Forecast</h3>
+                <div className="space-y-2">
+                    {weather.forecast.map((day, index) => {
+                      const DayIcon = weatherIcons[day.condition] || SunIcon;
+                      return (
+                        <ForecastRow key={index} day={day} DayIcon={DayIcon} />
+                      );
+                    })}
+                </div>
                 </div>
             </div>
         );
@@ -229,14 +247,38 @@ export default function WeatherWidget() {
   );
 }
 
+function HourlyForecastCard({ hour, HourIcon }: { hour: HourlyForecast, HourIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
+    return (
+        <div className="flex flex-col items-center justify-center gap-2 p-3 text-center rounded-lg bg-muted/50 h-full">
+            <p className="text-sm font-medium text-muted-foreground">{hour.time}</p>
+            <HourIcon className="w-8 h-8 text-primary" />
+            <p className="text-lg font-bold">{Math.round(hour.temp)}°</p>
+            {hour.rainProbability > 0 && (
+                <div className="flex items-center gap-1 text-xs text-primary font-semibold">
+                    <UmbrellaIcon className="h-3 w-3" />
+                    <span>{hour.rainProbability}%</span>
+                </div>
+            )}
+        </div>
+    )
+}
+
 function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
+  const [isHovered, setIsHovered] = useState(false);
   return (
-    <div className="flex justify-between items-center text-base font-medium p-2 rounded-md hover:bg-muted/50 transition-colors">
+    <div 
+        className={cn(
+            "flex justify-between items-center text-base font-medium p-2 rounded-md transition-colors",
+            isHovered && "bg-muted/50"
+        )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+    >
         <span className="w-1/3">{day.day}</span>
         <div className="w-1/3 flex items-center justify-center gap-2 text-primary">
             <DayIcon className="w-6 h-6" />
         </div>
-        <span className="w-1/3 text-right text-muted-foreground">{day.temp}°</span>
+        <span className="w-1/3 text-right text-muted-foreground">{Math.round(day.temp)}°</span>
     </div>
   );
 }
@@ -244,7 +286,7 @@ function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<R
 function WeatherLoadingSkeleton() {
     return (
         <div className="p-6">
-            <CardHeader className='p-0'>
+            <CardHeader className='p-0 mb-8'>
                 <Skeleton className="h-7 w-48" />
                 <Skeleton className="h-5 w-64 mt-1" />
             </CardHeader>
@@ -262,6 +304,18 @@ function WeatherLoadingSkeleton() {
                     <Skeleton className="h-5 w-32 ml-auto" />
                 </div>
             </div>
+
+            <div className='my-8'>
+                <Skeleton className="h-6 w-32 mb-4" />
+                <div className="flex gap-4">
+                    <Skeleton className="h-28 w-20 rounded-lg" />
+                    <Skeleton className="h-28 w-20 rounded-lg" />
+                    <Skeleton className="h-28 w-20 rounded-lg" />
+                    <Skeleton className="h-28 w-20 rounded-lg" />
+                    <Skeleton className="h-28 w-20 rounded-lg" />
+                </div>
+            </div>
+
             <div>
                 <Skeleton className="h-6 w-32 mb-4" />
                 <div className="space-y-2">
