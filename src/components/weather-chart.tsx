@@ -20,7 +20,7 @@ const CustomizedLabel = (props: any) => {
     // Show label every 3 hours
     if (index % 3 === 0) {
       return (
-        <text x={x} y={y} dy={-10} fill="rgba(255,255,255,0.8)" fontSize={14} textAnchor="middle">
+        <text x={x} y={y} dy={-10} fill="rgba(255,255,255,0.9)" fontSize={14} textAnchor="middle">
           {value}
         </text>
       );
@@ -50,7 +50,7 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
                     }}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
+                    tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 12 }}
                     dy={10}
                 />
                  <Tooltip
