@@ -24,8 +24,21 @@ const getWeatherFlow = ai.defineFlow(
     let { latitude, longitude, city } = input;
     let locationName = city || 'Current Location';
 
-    // If city is provided, we need to geocode it first
-    if (city && (!latitude || !longitude)) {
+    // Geocode to get a name if we only have coordinates
+    if (latitude !== undefined && longitude !== undefined && !city) {
+      const reverseGeocodingUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+      try {
+        const reverseGeoResult = await fetchJson(reverseGeocodingUrl, {
+            headers: { 'User-Agent': 'AgriGateManager/1.0' }
+        });
+        const address = reverseGeoResult.address;
+        locationName = address.city || address.town || address.village || address.suburb || "Current Location";
+      } catch (e) {
+        console.warn("Reverse geocoding failed, using default name.", e);
+      }
+    } 
+    // Geocode to get coordinates if we only have a city name
+    else if (city && (latitude === undefined || longitude === undefined)) {
       const geocodingUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
       const geoResult = await fetchJson(geocodingUrl);
       if (!geoResult.results?.[0]) {
@@ -37,26 +50,9 @@ const getWeatherFlow = ai.defineFlow(
     }
 
     if (latitude === undefined || longitude === undefined) {
-      throw new Error('Latitude and longitude are required to fetch weather.');
+      throw new Error('A valid location (coordinates or city name) is required to fetch weather.');
     }
     
-    // If city was not provided, use reverse geocoding to find a name
-    if (!city) {
-      // Switched to Nominatim for more accurate reverse geocoding
-      const reverseGeocodingUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
-      try {
-        const reverseGeoResult = await fetchJson(reverseGeocodingUrl, {
-            headers: { 'User-Agent': 'AgriGateManager/1.0' } // Nominatim requires a User-Agent
-        });
-        const address = reverseGeoResult.address;
-        // Prioritize more specific location types
-        locationName = address.city || address.town || address.village || address.suburb || "Current Location";
-      } catch (e) {
-        console.warn("Reverse geocoding failed, using default name.", e);
-      }
-    }
-
-
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto`;
 
     const weatherData = await fetchJson(weatherUrl);
