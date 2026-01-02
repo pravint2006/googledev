@@ -12,7 +12,7 @@ import { Skeleton } from './ui/skeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from './ui/carousel';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -177,7 +177,7 @@ export default function WeatherWidget() {
                     {weather.forecast.map((day, index) => {
                       const DayIcon = weatherIcons[day.condition] || SunIcon;
                       return (
-                        <ForecastRow key={index} day={day} DayIcon={DayIcon} />
+                        <ForecastRow key={index} day={day} DayIcon={DayIcon} isToday={index === 0} />
                       );
                     })}
                 </div>
@@ -268,8 +268,11 @@ function HourlyForecastCard({ hour, HourIcon }: { hour: HourlyForecast, HourIcon
     )
 }
 
-function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>> }) {
+function ForecastRow({ day, DayIcon, isToday }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>>, isToday: boolean }) {
   const [isHovered, setIsHovered] = useState(false);
+  const displayDay = isToday ? 'Today' : day.day;
+  const displayDate = format(parseISO(day.date), 'MMM d');
+
   return (
     <div 
         className={cn(
@@ -279,7 +282,10 @@ function ForecastRow({ day, DayIcon }: { day: DailyForecast, DayIcon: React.FC<R
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
     >
-        <span className="w-1/3">{day.day}</span>
+        <span className="w-1/3 flex items-baseline gap-2">
+            <span>{displayDay}</span>
+            <span className="text-sm text-muted-foreground">{displayDate}</span>
+        </span>
         <div className="w-1/3 flex items-center justify-center gap-2 text-primary">
             <DayIcon className="w-6 h-6" />
         </div>
