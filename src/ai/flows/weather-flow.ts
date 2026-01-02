@@ -93,7 +93,9 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     try {
         const { lat, lng } = await getGeocodedLocation(input, apiKey);
 
-        const weatherUrl = `https://weather.googleapis.com/v1/forecast?location.latitude=${lat}&location.longitude=${lng}&params=temperature,temperatureApparent,weatherCode,windSpeed,humidity,precipitationProbability&days=7&hours=24`;
+        const weatherParams = 'currentConditions,forecast';
+        const forecastParams = 'temperature,temperatureApparent,weatherCode,windSpeed,humidity,precipitationProbability';
+        const weatherUrl = `https://weather.googleapis.com/v1/forecast?location=${lat},${lng}&days=7&languageCode=en&units=METRIC&params=${forecastParams}`;
 
         const weatherResponse = await fetch(weatherUrl, {
             headers: {
@@ -130,8 +132,8 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             pincode = components.find((c: any) => c.types.includes('postal_code'))?.long_name || pincode;
         }
 
-        const { forecast, currentConditions } = weatherData;
-        const current = currentConditions.values;
+        const { dailyForecast, hourlyForecasts, currentConditions } = weatherData;
+        const current = currentConditions;
 
         return {
             city,
@@ -142,17 +144,17 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
             condition: mapWeatherCode(current.weatherCode),
             windSpeed: parseFloat(current.windSpeed.toFixed(1)),
             humidity: Math.round(current.humidity),
-            forecast: forecast.days.slice(0, 7).map((day: any) => ({
-                day: format(parseISO(day.dateTime), 'eeee'),
-                date: format(parseISO(day.dateTime), 'yyyy-MM-dd'),
-                temp: Math.round(day.values.temperatureAvg),
-                condition: mapWeatherCode(day.values.weatherCodeMax),
+            forecast: dailyForecast.slice(0, 7).map((day: any) => ({
+                day: format(parseISO(day.date), 'eeee'),
+                date: `${day.date.year}-${String(day.date.month).padStart(2,'0')}-${String(day.date.day).padStart(2,'0')}`,
+                temp: Math.round(day.temperature.average),
+                condition: mapWeatherCode(day.weatherCode.max),
             })),
-            hourlyForecast: forecast.hours.slice(0, 24).map((hour: any) => ({
+            hourlyForecast: hourlyForecasts.slice(0, 24).map((hour: any) => ({
                 time: format(parseISO(hour.dateTime), 'h a'),
-                temp: Math.round(hour.values.temperature),
-                condition: mapWeatherCode(hour.values.weatherCode),
-                rainProbability: Math.round(hour.values.precipitationProbability * 100),
+                temp: Math.round(hour.temperature),
+                condition: mapWeatherCode(hour.weatherCode),
+                rainProbability: Math.round(hour.precipitationProbability * 100),
             })),
         };
 
