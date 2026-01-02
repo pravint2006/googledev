@@ -17,10 +17,10 @@ interface FarmMapProps {
 const libraries: Libraries = ['places'];
 
 export default function FarmMap({ valves, center }: FarmMapProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "",
+    googleMapsApiKey: apiKey,
     libraries,
   });
   

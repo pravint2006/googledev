@@ -29,7 +29,7 @@ export default function MapPicker({
   isSubmitting,
   initialCenter = { lat: 11.1271, lng: 78.6569 }, // Default to Tamil Nadu, India
 }: MapPickerProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
   const [valves, setValves] = useState(initialValves);
   const [selectedValveIndex, setSelectedValveIndex] = useState<number | null>(null);
   const { toast } = useToast();
@@ -38,7 +38,7 @@ export default function MapPicker({
   const [zoomLevel, setZoomLevel] = useState(10);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "fallback-key-for-dev",
+    googleMapsApiKey: apiKey,
     libraries,
   });
 
