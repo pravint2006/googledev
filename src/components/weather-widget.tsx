@@ -12,6 +12,8 @@ import { Skeleton } from './ui/skeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from './ui/carousel';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
 
 const weatherIcons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Sunny: SunIcon,
@@ -121,10 +123,13 @@ export default function WeatherWidget() {
             return null;
         }
         const CurrentWeatherIcon = weatherIcons[weather.condition] || SunIcon;
+        const currentDate = new Date();
+
         return (
             <div className="relative text-foreground p-6 space-y-8">
                 <div className='flex justify-between items-start'>
                     <div>
+                        <p className="font-semibold text-primary">{format(currentDate, 'eeee, MMMM d, yyyy')}</p>
                         <CardTitle className="font-headline text-2xl">{weather.city}</CardTitle>
                         <CardDescription className='text-muted-foreground font-semibold'>{weather.district} - {weather.pincode}</CardDescription>
                     </div>
@@ -287,7 +292,8 @@ function WeatherLoadingSkeleton() {
     return (
         <div className="p-6">
             <CardHeader className='p-0 mb-8'>
-                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-5 w-56" />
+                <Skeleton className="h-7 w-48 mt-1" />
                 <Skeleton className="h-5 w-64 mt-1" />
             </CardHeader>
             <div className="flex justify-between my-8">

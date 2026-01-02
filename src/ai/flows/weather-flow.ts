@@ -65,7 +65,7 @@ const prompt = ai.definePrompt({
   
   If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   
-  Return a 7-day daily forecast and a 24-hour hourly forecast.
+  Return a 7-day daily forecast and a 24-hour hourly forecast. The 7-day forecast MUST start with today's day of the week and be sequential.
   `,
 });
 
