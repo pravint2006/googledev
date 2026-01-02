@@ -14,7 +14,7 @@ import {
   setPersistence, 
   browserSessionPersistence, 
   browserLocalPersistence,
-  signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
@@ -139,9 +139,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     const provider = new GoogleAuthProvider();
     
     try {
-      await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener in useUser will handle the redirect
-      router.push('/dashboard');
+      // Use signInWithRedirect instead of signInWithPopup
+      await signInWithRedirect(auth, provider);
+      // The user will be redirected to Google's sign-in page.
+      // After successful sign-in, they will be redirected back to your app.
+      // The onAuthStateChanged listener will then handle routing.
     } catch (error) {
       const authError = error as AuthError;
       toast({
@@ -149,8 +151,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         title: 'Google Sign-In Failed',
         description: authError.message || 'An unexpected error occurred.',
       });
-    } finally {
-      setIsGoogleLoading(false);
+      setIsGoogleLoading(false); // Only set loading to false on error
     }
   };
 
@@ -168,7 +169,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <CardContent className="space-y-4">
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
             {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2" />}
-            {isGoogleLoading ? 'Signing In...' : 'Sign In with Google'}
+            {isGoogleLoading ? 'Redirecting...' : 'Sign In with Google'}
           </Button>
 
           <div className="flex items-center gap-2 py-2">
