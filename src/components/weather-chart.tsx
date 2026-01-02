@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, LabelList } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
 interface ChartData {
@@ -50,7 +50,20 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
                     }}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 12 }}
+                    tick={(props) => {
+                      const { x, y, payload } = props;
+                      const date = parseISO(payload.value);
+                      if (date.getHours() % 3 !== 0) {
+                        return null; // Hide tick if it's not on the 3-hour mark
+                      }
+                      return (
+                        <g transform={`translate(${x},${y})`}>
+                          <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={12}>
+                            {format(date, 'ha')}
+                          </text>
+                        </g>
+                      );
+                    }}
                     dy={10}
                 />
                  <Tooltip
@@ -69,7 +82,7 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
                     labelStyle={{ marginBottom: '4px' }}
                 />
                 <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fillOpacity={1} fill="url(#colorValue)">
-                    <LabelList content={<CustomizedLabel />} />
+                   {/* The LabelList was showing temperature values directly on the chart, which is not desired in this case. */}
                 </Area>
             </AreaChart>
         </ResponsiveContainer>
