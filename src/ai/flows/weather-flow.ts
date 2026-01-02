@@ -11,6 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
+import { format } from 'date-fns';
 
 const WeatherInputSchema = z.object({
   location: z.string().describe('The city or location for the weather forecast (e.g., "Chennai, India").'),
@@ -55,9 +56,13 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
   return getWeatherFlow(input);
 }
 
+const PromptInputSchema = WeatherInputSchema.extend({
+  currentDate: z.string(),
+});
+
 const prompt = ai.definePrompt({
   name: 'getWeatherPrompt',
-  input: { schema: WeatherInputSchema },
+  input: { schema: PromptInputSchema },
   output: { schema: WeatherOutputSchema },
   model: googleAI.model('gemini-2.5-flash'),
   prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data based on the provided location.
@@ -66,7 +71,7 @@ const prompt = ai.definePrompt({
   
   If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
   
-  Return a 7-day daily forecast and a 24-hour hourly forecast. The 7-day forecast MUST start with today's day of the week and be sequential. For each day in the 7-day forecast, you MUST include the full date in YYYY-MM-DD format.
+  Return a 7-day daily forecast and a 24-hour hourly forecast. The 7-day forecast MUST start with the provided current date: {{{currentDate}}}. The forecast must be sequential. For each day in the 7-day forecast, you MUST include the full date in YYYY-MM-DD format.
   `,
 });
 
@@ -77,7 +82,8 @@ const getWeatherFlow = ai.defineFlow(
     outputSchema: WeatherOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const { output } = await prompt({ ...input, currentDate });
     return output!;
   }
 );
