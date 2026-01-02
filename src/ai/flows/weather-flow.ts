@@ -6,8 +6,8 @@ import { WeatherInput, WeatherInputSchema, WeatherOutput, WeatherOutputSchema } 
 
 
 // Helper to fetch from a URL and parse JSON
-async function fetchJson(url: string) {
-  const response = await fetch(url);
+async function fetchJson(url: string, options: RequestInit = {}) {
+  const response = await fetch(url, options);
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
@@ -37,21 +37,22 @@ const getWeatherFlow = ai.defineFlow(
     }
 
     if (latitude === undefined || longitude === undefined) {
-      throw new Error('Latitude and longitude are required.');
+      throw new Error('Latitude and longitude are required to fetch weather.');
     }
     
-     // If city was not provided, use reverse geocoding to find a name
+    // If city was not provided, use reverse geocoding to find a name
     if (!city) {
-      const reverseGeocodingUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`;
+      // Switched to Nominatim for more accurate reverse geocoding
+      const reverseGeocodingUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
       try {
-        const reverseGeoResult = await fetchJson(reverseGeocodingUrl);
-        if (reverseGeoResult.city) {
-          locationName = reverseGeoResult.city;
-        } else if (reverseGeoResult.locality) {
-            locationName = reverseGeoResult.locality;
-        }
+        const reverseGeoResult = await fetchJson(reverseGeocodingUrl, {
+            headers: { 'User-Agent': 'AgriGateManager/1.0' } // Nominatim requires a User-Agent
+        });
+        const address = reverseGeoResult.address;
+        // Prioritize more specific location types
+        locationName = address.city || address.town || address.village || address.suburb || "Current Location";
       } catch (e) {
-        console.warn("Reverse geocoding failed, using default name.");
+        console.warn("Reverse geocoding failed, using default name.", e);
       }
     }
 
