@@ -120,6 +120,9 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
         
         const weatherResponse = await fetch(weatherUrl);
         if (!weatherResponse.ok) {
+            if (weatherResponse.status === 401) {
+                 throw new Error('The OpenWeatherMap API key is invalid or not yet active. Please check your key and try again in a few minutes.');
+            }
             throw new Error(`Failed to fetch weather data from OpenWeatherMap. Status: ${weatherResponse.status}`);
         }
 
@@ -179,7 +182,7 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     } catch (error) {
         console.error("Error in getWeather flow:", error);
         if (error instanceof Error) {
-            throw new Error(error.message || "An unknown error occurred while fetching weather data.");
+            throw error; // Re-throw the specific error
         }
         throw new Error("An unknown error occurred while fetching weather data.");
     }
