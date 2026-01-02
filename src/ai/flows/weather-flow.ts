@@ -9,6 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const WeatherInputSchema = z.object({
@@ -48,6 +49,7 @@ const prompt = ai.definePrompt({
   name: 'getWeatherPrompt',
   input: { schema: WeatherInputSchema },
   output: { schema: WeatherOutputSchema },
+  model: googleAI.model('gemini-2.5-flash'),
   prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data based on the provided location.
   
   You MUST invent plausible weather data. Do not look up real-time weather.
