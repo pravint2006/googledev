@@ -87,16 +87,20 @@ async function getGeocodedLocation(input: WeatherInput, apiKey: string): Promise
 export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-        throw new Error("Google Maps API key is not configured. Please add it to your .env.local file.");
+        throw new Error("Google Maps API key is not configured. Please add it to your .env file.");
     }
 
     try {
         const { lat, lng } = await getGeocodedLocation(input, apiKey);
 
-        const requests = 'currentConditions,dailyForecast,hourlyForecast';
-        const weatherUrl = `https://weather.googleapis.com/v1/weather:get?location=${lat},${lng}&requests=${requests}&days=7&units=METRIC&languageCode=en`;
+        const weatherUrl = new URL('https://weather.googleapis.com/v1/weather:get');
+        weatherUrl.searchParams.append('location', `${lat},${lng}`);
+        weatherUrl.searchParams.append('requests', 'currentConditions,dailyForecast,hourlyForecast');
+        weatherUrl.searchParams.append('days', '7');
+        weatherUrl.searchParams.append('units', 'METRIC');
+        weatherUrl.searchParams.append('languageCode', 'en');
 
-        const weatherResponse = await fetch(weatherUrl, {
+        const weatherResponse = await fetch(weatherUrl.toString(), {
             headers: {
                 'X-Goog-Api-Key': apiKey,
                 'Content-Type': 'application/json'
