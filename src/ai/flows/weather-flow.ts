@@ -94,7 +94,7 @@ export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
         const { lat, lng } = await getGeocodedLocation(input, apiKey);
 
         const requests = 'currentConditions,dailyForecast,hourlyForecast';
-        const weatherUrl = `https://weather.googleapis.com/v1/weather:get?location.latitude=${lat}&location.longitude=${lng}&requests=${requests}&days=7&units=METRIC&languageCode=en`;
+        const weatherUrl = `https://weather.googleapis.com/v1/weather:get?location=${lat},${lng}&requests=${requests}&days=7&units=METRIC&languageCode=en`;
 
         const weatherResponse = await fetch(weatherUrl, {
             headers: {
