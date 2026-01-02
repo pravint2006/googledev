@@ -99,7 +99,7 @@ export function SignUpForm({ onSwitchToLogin, isGoogleLoading, setIsGoogleLoadin
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",
       });
-      router.push('/verify-email');
+      // The redirect is handled by the global auth state listener
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;

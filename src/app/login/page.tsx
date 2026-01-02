@@ -22,7 +22,7 @@ export default function LoginPage() {
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(true); // Start true to handle initial redirect check
 
 
   // This effect handles the result from a Google Sign-In redirect
@@ -30,7 +30,6 @@ export default function LoginPage() {
     if (!auth || !firestore) return;
 
     const processRedirect = async () => {
-        setIsGoogleLoading(true); // Indicate that we are processing a potential redirect
         try {
             const result = await getRedirectResult(auth);
             if (result) {
@@ -135,5 +134,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-    

@@ -24,7 +24,6 @@ import { Label } from './ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
-import { firebaseConfig } from '@/firebase/config';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
@@ -137,6 +136,7 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
     const provider = new GoogleAuthProvider();
     
     try {
+      // This just initiates the redirect. The result is handled on page load.
       await signInWithRedirect(auth, provider);
     } catch (error) {
       const authError = error as AuthError;
@@ -145,7 +145,7 @@ export function LoginForm({ onSwitchToSignup, isGoogleLoading, setIsGoogleLoadin
         title: 'Google Sign-In Failed',
         description: authError.message || 'An unexpected error occurred.',
       });
-      setIsGoogleLoading(false);
+      setIsGoogleLoading(false); // Only reachable if signInWithRedirect fails immediately
     }
   };
 
