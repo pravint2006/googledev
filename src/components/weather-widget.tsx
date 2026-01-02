@@ -64,7 +64,7 @@ export default function WeatherWidget() {
       })
       .catch(e => {
         console.error(e);
-        setError('Could not fetch weather data. The AI model might be busy. Please try again in a moment.');
+        setError(e.message || 'Could not fetch weather data. Please check your API key or try again in a moment.');
         setView('error');
       });
   };
@@ -104,7 +104,7 @@ export default function WeatherWidget() {
     e.preventDefault();
     if (!locationInput || !pincodeInput) {
       setError("Please enter a place name and a pincode.");
-      setView('error');
+      setView('form'); // Stay on form view to show the error
       return;
     }
     const input: WeatherInput = { location: locationInput, pincode: pincodeInput };
@@ -204,13 +204,13 @@ export default function WeatherWidget() {
                         <div className='flex gap-2'>
                             <Input 
                                 value={pincodeInput}
-                                onChange={(e) => setPincodeInput(e.target.value)}
+                                onChange={(e) => { setPincodeInput(e.target.value); setError(null); }}
                                 placeholder="Pincode (e.g., 642203)"
                                 className="w-1/3"
                             />
                             <Input 
                                 value={locationInput}
-                                onChange={(e) => setLocationInput(e.target.value)}
+                                onChange={(e) => { setLocationInput(e.target.value); setError(null); }}
                                 placeholder="Place name (e.g., Thungavi)"
                                 className="w-2/3"
                             />
@@ -270,7 +270,7 @@ function HourlyForecastCard({ hour, HourIcon }: { hour: HourlyForecast, HourIcon
 
 function ForecastRow({ day, DayIcon, isToday }: { day: DailyForecast, DayIcon: React.FC<React.SVGProps<SVGSVGElement>>, isToday: boolean }) {
   const [isHovered, setIsHovered] = useState(false);
-  const displayDay = isToday ? 'Today' : day.day;
+  const displayDay = isToday ? 'Today' : format(parseISO(day.date), 'eee');
   const displayDate = format(parseISO(day.date), 'MMM d');
 
   return (
@@ -283,7 +283,7 @@ function ForecastRow({ day, DayIcon, isToday }: { day: DailyForecast, DayIcon: R
         onMouseLeave={() => setIsHovered(false)}
     >
         <span className="w-1/3 flex items-baseline gap-2">
-            <span>{displayDay}</span>
+            <span className='font-bold w-12'>{displayDay}</span>
             <span className="text-sm text-muted-foreground">{displayDate}</span>
         </span>
         <div className="w-1/3 flex items-center justify-center gap-2 text-primary">

@@ -1,17 +1,15 @@
 
 'use server';
 /**
- * @fileOverview A weather forecasting AI agent.
+ * @fileOverview A weather forecasting agent that uses the Google Weather API.
  *
- * - getWeather - A function that handles fetching weather data.
+ * - getWeather - A function that handles fetching real weather data.
  * - WeatherInput - The input type for the getWeather function.
  * - WeatherOutput - The return type for the getWeather function.
  */
 
-import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
-import { format } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 
 const WeatherInputSchema = z.object({
   location: z.string().describe('The city or location for the weather forecast (e.g., "Chennai, India").'),
@@ -51,39 +49,119 @@ const WeatherOutputSchema = z.object({
 });
 export type WeatherOutput = z.infer<typeof WeatherOutputSchema>;
 
+// Mapping from Google's weather codes to our simplified conditions
+const conditionMap: { [key: number]: WeatherOutput['condition'] } = {
+    1000: 'Sunny', 1001: 'Cloudy', 1002: 'Cloudy', 1003: 'Partly Cloudy', 1004: 'Cloudy',
+    1100: 'Sunny', 1101: 'Partly Cloudy', 1102: 'Partly Cloudy',
+    2000: 'Hazy', 2100: 'Hazy',
+    4000: 'Rainy', 4001: 'Rainy', 4002: 'Rainy', 4200: 'Rainy', 4201: 'Rainy',
+    5000: 'Stormy', 5001: 'Stormy', 5100: 'Stormy', 5101: 'Stormy',
+    8000: 'Thunderstorms'
+};
+const defaultCondition: WeatherOutput['condition'] = 'Partly Cloudy';
 
-export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
-  return getWeatherFlow(input);
+function mapWeatherCode(code: number | undefined): WeatherOutput['condition'] {
+    if (code === undefined) return defaultCondition;
+    return conditionMap[code] || defaultCondition;
 }
 
-const PromptInputSchema = WeatherInputSchema.extend({
-  currentDate: z.string(),
-});
+async function getGeocodedLocation(input: WeatherInput, apiKey: string): Promise<{ lat: number; lng: number }> {
+    if (input.lat && input.lon) {
+        return { lat: input.lat, lng: input.lon };
+    }
+    
+    const address = `${input.location}, ${input.pincode || ''}`.trim();
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
-const prompt = ai.definePrompt({
-  name: 'getWeatherPrompt',
-  input: { schema: PromptInputSchema },
-  output: { schema: WeatherOutputSchema },
-  model: googleAI.model('gemini-2.5-flash'),
-  prompt: `You are a weather forecasting service. Your function is to generate plausible and detailed weather data based on the provided location.
-  
-  You MUST invent plausible weather data. Do not look up real-time weather.
-  
-  If the user provides "Thungavi" and pincode "642203", you MUST use "Tirupur" as the district. For other locations, provide a plausible district and pincode.
-  
-  Return a 7-day daily forecast and a 24-hour hourly forecast. The 7-day forecast MUST start with the provided current date: {{{currentDate}}}. The forecast must be sequential. For each day in the 7-day forecast, you MUST include the full date in YYYY-MM-DD format.
-  `,
-});
+    const response = await fetch(geocodeUrl);
+    if (!response.ok) {
+        throw new Error('Failed to fetch data from Geocoding API.');
+    }
+    const data = await response.json();
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'No results found.'}`);
+    }
+    return data.results[0].geometry.location;
+}
 
-const getWeatherFlow = ai.defineFlow(
-  {
-    name: 'getWeatherFlow',
-    inputSchema: WeatherInputSchema,
-    outputSchema: WeatherOutputSchema,
-  },
-  async (input) => {
-    const currentDate = format(new Date(), 'yyyy-MM-dd');
-    const { output } = await prompt({ ...input, currentDate });
-    return output!;
-  }
-);
+export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+        throw new Error("Google Maps API key is not configured. Please add it to your .env.local file.");
+    }
+
+    try {
+        const { lat, lng } = await getGeocodedLocation(input, apiKey);
+
+        const weatherUrl = `https://weather.googleapis.com/v1/forecast?location.latitude=${lat}&location.longitude=${lng}&params=temperature,temperatureApparent,weatherCode,windSpeed,humidity,precipitationProbability&days=7&hours=24`;
+
+        const weatherResponse = await fetch(weatherUrl, {
+            headers: {
+                'X-Goog-Api-Key': apiKey,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!weatherResponse.ok) {
+            const errorBody = await weatherResponse.text();
+            console.error("Weather API Error:", errorBody);
+            // Check for specific error message indicating API is not enabled
+            if (errorBody.includes("Weather API has not been used in project")) {
+                 throw new Error("The Weather API is not enabled for your API key. Please enable it in the Google Cloud Console.");
+            }
+            throw new Error(`Failed to fetch data from Weather API. Status: ${weatherResponse.status}.`);
+        }
+
+        const weatherData = await weatherResponse.json();
+        
+        // Reverse geocode to get city, district, pincode
+        const reverseGeocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+        const reverseGeocodeResponse = await fetch(reverseGeocodeUrl);
+        const reverseGeocodeData = await reverseGeocodeResponse.json();
+
+        let city = input.location;
+        let district = 'N/A';
+        let pincode = input.pincode || 'N/A';
+
+        if (reverseGeocodeData.status === 'OK' && reverseGeocodeData.results.length > 0) {
+            const components = reverseGeocodeData.results[0].address_components;
+            city = components.find((c: any) => c.types.includes('locality'))?.long_name || city;
+            district = components.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name || district;
+            pincode = components.find((c: any) => c.types.includes('postal_code'))?.long_name || pincode;
+        }
+
+        const { forecast, currentConditions } = weatherData;
+        const current = currentConditions.values;
+
+        return {
+            city,
+            district,
+            pincode,
+            currentTemp: Math.round(current.temperature),
+            feelsLike: Math.round(current.temperatureApparent),
+            condition: mapWeatherCode(current.weatherCode),
+            windSpeed: parseFloat(current.windSpeed.toFixed(1)),
+            humidity: Math.round(current.humidity),
+            forecast: forecast.days.slice(0, 7).map((day: any) => ({
+                day: format(parseISO(day.dateTime), 'eeee'),
+                date: format(parseISO(day.dateTime), 'yyyy-MM-dd'),
+                temp: Math.round(day.values.temperatureAvg),
+                condition: mapWeatherCode(day.values.weatherCodeMax),
+            })),
+            hourlyForecast: forecast.hours.slice(0, 24).map((hour: any) => ({
+                time: format(parseISO(hour.dateTime), 'h a'),
+                temp: Math.round(hour.values.temperature),
+                condition: mapWeatherCode(hour.values.weatherCode),
+                rainProbability: Math.round(hour.values.precipitationProbability * 100),
+            })),
+        };
+
+    } catch (error) {
+        console.error("Error in getWeather flow:", error);
+        // Re-throw the error so the client-side can catch it
+        if (error instanceof Error) {
+            throw new Error(error.message || "An unknown error occurred while fetching weather data.");
+        }
+        throw new Error("An unknown error occurred while fetching weather data.");
+    }
+}
