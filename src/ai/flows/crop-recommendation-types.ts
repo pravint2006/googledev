@@ -9,6 +9,9 @@ export const CropRecommendationInputSchema = z.object({
   rainfall: z.string(),
   soilType: z.string().optional(),
   waterSource: z.string().optional(),
+  waterIrrigation: z.enum(['drip', 'flood', 'sprinkler', 'manual']).optional(),
+  waterLevel: z.enum(['low', 'medium', 'high']).optional(),
+  landOwned: z.number().optional(),
 });
 
 export type CropRecommendationInput = z.infer<

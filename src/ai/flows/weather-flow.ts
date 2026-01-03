@@ -5,6 +5,37 @@ import { ai } from '@/ai/genkit';
 import { WeatherInput, WeatherInputSchema, WeatherOutput, WeatherOutputSchema } from './weather-types';
 import { googleAI } from '@genkit-ai/google-genai';
 
+// Simple in-memory cache with TTL
+const weatherCache = new Map<string, { data: WeatherOutput; timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+function getCacheKey(input: WeatherInput): string {
+  if (input.latitude !== undefined && input.longitude !== undefined) {
+    return `${input.latitude},${input.longitude}`;
+  }
+  return input.city || 'default';
+}
+
+function getCachedWeather(input: WeatherInput): WeatherOutput | null {
+  const key = getCacheKey(input);
+  const cached = weatherCache.get(key);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  // Remove expired cache
+  if (cached) {
+    weatherCache.delete(key);
+  }
+  
+  return null;
+}
+
+function setCachedWeather(input: WeatherInput, data: WeatherOutput): void {
+  const key = getCacheKey(input);
+  weatherCache.set(key, { data, timestamp: Date.now() });
+}
 
 // Helper to fetch from a URL and parse JSON
 async function fetchJson(url: string, options: RequestInit = {}) {
@@ -20,10 +51,6 @@ const getWeatherFlow = ai.defineFlow(
     name: 'getWeatherFlow',
     inputSchema: WeatherInputSchema,
     outputSchema: WeatherOutputSchema,
-    config: {
-        model: googleAI.model('gemini-1.5-flash-latest'),
-        temperature: 0.2,
-    }
   },
   async (input) => {
     let { latitude, longitude, city } = input;
@@ -150,5 +177,17 @@ const getWeatherFlow = ai.defineFlow(
 );
 
 export async function getWeather(input: WeatherInput): Promise<WeatherOutput> {
-    return await getWeatherFlow(input);
+    // Check cache first
+    const cached = getCachedWeather(input);
+    if (cached) {
+      console.log('Using cached weather data');
+      return cached;
+    }
+
+    const result = await getWeatherFlow(input);
+    
+    // Cache the result
+    setCachedWeather(input, result);
+    
+    return result;
 }

@@ -18,9 +18,12 @@ export default function AppLayout({
   return (
     <>
       <Header />
-      <main className="p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">{children}</div>
+      <main className="w-full">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {children}
+        </div>
       </main>
     </>
   );
 }
+

@@ -13,7 +13,7 @@ import {
   setPersistence, 
   browserSessionPersistence, 
   browserLocalPersistence,
-  signInWithRedirect,
+  signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
@@ -133,15 +133,26 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     const provider = new GoogleAuthProvider();
     
     try {
-      // This just initiates the redirect. The result is handled on the login page load.
-      await signInWithRedirect(auth, provider);
+      // Set persistence before signing in
+      await setPersistence(auth, browserLocalPersistence);
+      
+      // Use popup instead of redirect for better UX
+      const result = await signInWithPopup(auth, provider);
+      console.log('[Login] Google sign-in successful:', result.user.email);
+      
+      // The onAuthStateChanged listener will pick up this change
+      // and the FirebaseProvider will handle the redirect to dashboard
     } catch (error) {
       const authError = error as AuthError;
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: authError.message || 'An unexpected error occurred.',
-      });
+      
+      // Only show error if it's not a user cancellation
+      if (authError.code !== 'auth/popup-closed-by-user' && authError.code !== 'auth/cancelled-popup-request') {
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-In Failed',
+          description: authError.message || 'An unexpected error occurred.',
+        });
+      }
       setIsGoogleLoading(false);
     }
   };

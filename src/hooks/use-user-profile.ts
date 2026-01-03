@@ -22,6 +22,12 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   lastWeatherLocation?: WeatherLocation;
+  // User preferences for crop recommendations
+  waterIrrigation?: 'drip' | 'flood' | 'sprinkler' | 'manual';
+  waterLevel?: 'low' | 'medium' | 'high';
+  soilType?: 'clay' | 'sandy' | 'loamy' | 'chalky';
+  landOwned?: number; // in acres
+  isProfileComplete?: boolean;
 }
 
 /**

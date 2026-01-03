@@ -2,16 +2,20 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { googleAI } from '@genkit-ai/google-genai';
 import {
   CropRecommendationInput,
   CropRecommendationInputSchema,
 } from './crop-recommendation-types';
 
-const recommendationPrompt = ai.definePrompt({
-  name: 'cropRecommendationCsvPrompt',
-  input: { schema: CropRecommendationInputSchema },
-  prompt: `
-You are an expert agricultural advisor for Indian farmers.
+const getRecommendationsFlow = ai.defineFlow(
+  {
+    name: 'getRecommendationsCsvFlow',
+    inputSchema: CropRecommendationInputSchema,
+    outputSchema: z.string(),
+  },
+  async (input) => {
+    const prompt = `You are an expert agricultural advisor for Indian farmers.
 
 Return ONLY valid CSV.
 
@@ -19,39 +23,38 @@ Headers:
 plant,reason,waterRequirement,plantingPeriod
 
 Context:
-Location: {{location}}
-Season: {{season}}
-Temperature: {{tempMin}}°C - {{tempMax}}°C
-Rainfall: {{rainfall}}
-Soil: {{soilType}}
-Water Source: {{waterSource}}
+Location: ${input.location}
+Season: ${input.season}
+Temperature: ${input.tempMin}°C - ${input.tempMax}°C
+Rainfall: ${input.rainfall}
+Soil: ${input.soilType ?? 'Loam'}
+Water Source: ${input.waterSource ?? 'Irrigation'}
+${input.waterIrrigation ? `Irrigation Type: ${input.waterIrrigation}` : ''}
+${input.waterLevel ? `Water Availability: ${input.waterLevel}` : ''}
+${input.landOwned ? `Land Size: ${input.landOwned} acres` : ''}
 
 Rules:
 - 3 to 4 crops only
+- Prioritize crops suitable for the specified irrigation type and water availability
+- Consider land size for recommended crops
 - No markdown
-- No extra text
-`,
-});
+- No extra text`;
 
-export const getRecommendationsFlow = ai.defineFlow(
-  {
-    name: 'getRecommendationsCsvFlow',
-    input: { schema: CropRecommendationInputSchema },
-    output: { schema: z.string() },
-  },
-  async (input) => {
     const res = await ai.generate({
-      model: 'googleai/gemini-pro',
-      prompt: recommendationPrompt,
-      input: {
-        ...input,
-        soilType: input.soilType ?? 'Loam',
-        waterSource: input.waterSource ?? 'Irrigation',
-      },
-      config: { temperature: 0.4 },
+      model: googleAI.model('gemini-2.5-flash'),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
     });
 
-    const text = res.text()?.trim() ?? '';
+    const text = res.text.trim();
 
     if (!text.startsWith('plant,reason')) {
       throw new Error('AI returned invalid CSV');
@@ -64,5 +67,6 @@ export const getRecommendationsFlow = ai.defineFlow(
 export async function getRecommendations(
   input: CropRecommendationInput
 ): Promise<string> {
-  return getRecommendationsFlow.run(input);
+  return await getRecommendationsFlow(input);
 }
+

@@ -27,7 +27,7 @@ export interface FirebaseContextState {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 // Define which paths are considered "public" and don't require authentication.
-const PUBLIC_PATHS = ['/login', '/signup', '/verify-email']; // Add any other public paths here
+const PUBLIC_PATHS = ['/login', '/signup', '/verify-email', '/profile']; // Add any other public paths here
 
 /**
  * Provides Firebase services and manages user authentication state and routing logic.
@@ -45,6 +45,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('[Firebase] Auth state changed:', firebaseUser?.email || 'No user');
       setUser(firebaseUser);
       setIsUserLoading(false);
     });
@@ -56,14 +57,22 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
 
+    console.log('[Firebase] Routing check:', {
+      user: user?.email || 'No user',
+      pathname,
+      isPublicPath,
+      isUserLoading
+    });
+
     if (user) {
       // USER IS LOGGED IN
       if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
          if (pathname !== '/verify-email') {
           router.push('/verify-email');
         }
-      } else if (isPublicPath || pathname === '/') {
-        // If logged-in & verified user is on a public page or root, send to dashboard.
+      } else if ((isPublicPath || pathname === '/') && pathname !== '/profile') {
+        // If logged-in & verified user is on a public page (except /profile) or root, send to dashboard.
+        // Allow them to stay on /profile if they're setting it up
         router.push('/dashboard');
       }
     } else {

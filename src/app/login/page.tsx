@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
-import { getRedirectResult, type AuthError } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,76 +17,74 @@ export default function LoginPage() {
   const [isLoginView, setIsLoginView] = useState(true);
   
   // This hook is used to determine when to show the main loading spinner.
-  const { user } = useUser();
+  const { user, loading: isUserLoading } = useUser();
 
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
-  // State to track if we're processing a sign-in redirect from Google.
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+  
+  // State to track if we're processing user profile creation
+  const [isProcessingProfile, setIsProcessingProfile] = useState(false);
 
-  // This effect handles the result from a Google Sign-In redirect.
-  // It runs once on mount to check if the user is returning from Google.
+  // This effect handles creating the user profile in Firestore when a new user signs in
   useEffect(() => {
-    // Don't run until Firebase is ready.
-    if (!auth || !firestore) return;
+    if (!user || !firestore || isProcessingProfile) return;
 
-    const processRedirect = async () => {
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                // User has successfully signed in via redirect.
-                const user = result.user;
-                // Path is now correctly set to /users/{uid}
-                const userDocRef = doc(firestore, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
+    const createUserProfile = async () => {
+      try {
+        setIsProcessingProfile(true);
+        console.log('[Login] Creating user profile for:', user.email);
+        
+        const userDocRef = doc(firestore, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
 
-                // If the user's document doesn't exist, it's their first time signing in.
-                if (!userDoc.exists()) {
-                    // Create their profile document in Firestore.
-                    const [firstName, ...lastNameParts] = (user.displayName || " ").split(" ");
-                    const lastName = lastNameParts.join(' ');
-                    await setDoc(userDocRef, {
-                        id: user.uid, // Store the UID in the document as well
-                        email: user.email,
-                        firstName: firstName || '',
-                        lastName: lastName || '',
-                    });
-                     toast({ title: 'Welcome!', description: 'Your account has been created.' });
-                }
-                // At this point, the user is signed in and has a profile document.
-                // The FirebaseProvider will now see the authenticated user and handle
-                // the redirect to the /dashboard.
-            }
-        } catch (error) {
-            const authError = error as AuthError;
-            // 'auth/no-redirect-results' is an expected code if the page loads without a redirect.
-            // We only show a toast notification for actual, unexpected errors.
-            if (authError.code !== 'auth/no-redirect-results') {
-              toast({
-                  variant: 'destructive',
-                  title: 'Google Sign-In Failed',
-                  description: authError.message || 'An unexpected error occurred during sign-in.',
-              });
-            }
-        } finally {
-            // We've finished processing the redirect, successful or not.
-            setIsProcessingRedirect(false);
+        // If the user's document doesn't exist, it's their first time signing in.
+        if (!userDoc.exists()) {
+          console.log('[Login] New user detected, creating profile...');
+          
+          // Create their profile document in Firestore.
+          const [firstName, ...lastNameParts] = (user.displayName || " ").split(" ");
+          const lastName = lastNameParts.join(' ');
+          
+          await setDoc(userDocRef, {
+            id: user.uid,
+            email: user.email,
+            firstName: firstName || '',
+            lastName: lastName || '',
+            createdAt: new Date(),
+            isProfileComplete: false, // Mark as incomplete - user needs to fill preferences
+          });
+          
+          console.log('[Login] User profile created successfully');
+          toast({ 
+            title: 'Welcome!', 
+            description: 'Your account has been created.' 
+          });
+        } else {
+          console.log('[Login] Existing user logged in');
         }
+      } catch (error: any) {
+        console.error('[Login] Error creating user profile:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Profile Error',
+          description: error.message || 'Failed to create user profile.',
+        });
+      } finally {
+        setIsProcessingProfile(false);
+      }
     };
-    
-    processRedirect();
-    // This effect should only run once.
-  }, [auth, firestore, toast]);
 
-  // Show a loading spinner if we are still processing a potential Google sign-in
-  // OR if the user is already authenticated (and waiting for the provider to redirect them).
-  if (isProcessingRedirect || user) {
+    createUserProfile();
+  }, [user, firestore, toast, isProcessingProfile]);
+
+  // Show loading spinner while processing auth state or profile creation
+  if (isUserLoading || isProcessingProfile || user) {
     return (
-       <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   // If we're done loading and there's no authenticated user, show the login/signup form.

@@ -90,34 +90,55 @@ export default function WeatherWidget() {
   }, [selectedDayIndex, weatherData]);
 
   useEffect(() => {
-    // 1. Try fetching with last known location from user profile
-    if (userProfile?.lastWeatherLocation) {
+    let isMounted = true;
+    const weatherFetchPromise = async () => {
+      // 1. Try fetching with last known location from user profile
+      if (userProfile?.lastWeatherLocation) {
         const { city, latitude, longitude } = userProfile.lastWeatherLocation;
-        if(city) {
-            fetchWeather({ city });
-        } else if (latitude && longitude){
-            fetchWeather({ latitude, longitude });
+        if (city) {
+          if (isMounted) fetchWeather({ city });
+        } else if (latitude && longitude) {
+          if (isMounted) fetchWeather({ latitude, longitude });
         } else {
-             // Fallback if profile data is incomplete
-            fetchWeather({ city: 'Delhi' });
+          if (isMounted) fetchWeather({ city: 'Delhi' });
         }
-    } else if (userProfile === null) { // Check for explicit null, not undefined during loading
-        // 2. Fallback to browser geolocation
-        navigator.geolocation.getCurrentPosition(
+      } else if (userProfile === null) {
+        // 2. Start geolocation in background with short timeout, don't block UI
+        const geoPromise = new Promise<void>((resolve) => {
+          const timeoutId = setTimeout(() => {
+            // 3. If geolocation times out, set a default city
+            if (isMounted) fetchWeather({ city: 'Delhi' });
+            resolve();
+          }, 3000); // Reduced timeout from 10s to 3s
+
+          navigator.geolocation.getCurrentPosition(
             (position) => {
+              clearTimeout(timeoutId);
+              if (isMounted) {
                 fetchWeather({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
                 });
+              }
+              resolve();
             },
             (err) => {
-                // 3. If geolocation fails, set a default city
-                console.warn('Geolocation failed:', err.message);
-                fetchWeather({ city: 'Delhi' }); // Default to a major city in India
-            },
-            { timeout: 10000 }
-        );
-    }
+              clearTimeout(timeoutId);
+              console.warn('Geolocation failed:', err.message);
+              if (isMounted) fetchWeather({ city: 'Delhi' });
+              resolve();
+            }
+          );
+        });
+        await geoPromise;
+      }
+    };
+
+    weatherFetchPromise();
+
+    return () => {
+      isMounted = false;
+    };
   }, [userProfile, fetchWeather]);
 
   const handleSearch = (e: React.FormEvent) => {

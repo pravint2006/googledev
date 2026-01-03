@@ -6,11 +6,13 @@ import {
   LayoutDashboard,
   Tractor,
   PlusCircle,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/advisor', label: 'AI Advisor', icon: MessageSquare },
     { href: '/farms', label: 'Farms', icon: Tractor },
     { href: '/farms/new', label: 'Add Farm', icon: PlusCircle },
 ];
