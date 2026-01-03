@@ -48,7 +48,7 @@ const weatherDescription = (code: number): string => {
 };
 
 
-export default function WeatherWidget() {
+export default function WeatherWidget({ className = '' }: { className?: string }) {
   const { userProfile, updateUserProfile } = useUserProfile();
   const { weatherData, loading, error, fetchWeather, clearError } = useWeatherStore();
   const [citySearch, setCitySearch] = useState('');
@@ -267,7 +267,7 @@ export default function WeatherWidget() {
   const displayLocation = fullLocationName ? `${fullLocationName}${pincode ? ` - ${pincode}` : ''}` : `${locationName}${pincode ? ` - ${pincode}` : ''}`;
 
   return (
-    <Card className="relative bg-primary text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-primary/20">
+    <Card className={`relative bg-primary text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-primary/20 ${className}`}>
         
         <form onSubmit={handleSearch} className="absolute top-4 right-4 z-10 flex w-full max-w-xs">
           {renderSearch()}

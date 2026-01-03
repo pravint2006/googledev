@@ -152,6 +152,8 @@ export function UserPreferencesForm() {
                 <SelectItem value="sandy">Sandy Soil</SelectItem>
                 <SelectItem value="loamy">Loamy Soil</SelectItem>
                 <SelectItem value="chalky">Chalky Soil</SelectItem>
+                <SelectItem value="silt">Silt Soil</SelectItem>
+                <SelectItem value="peaty">Peaty Soil</SelectItem>
               </SelectContent>
             </Select>
           </div>

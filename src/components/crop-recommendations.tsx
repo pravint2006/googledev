@@ -87,29 +87,34 @@ const parseCsvResponse = (csvString: string): ParsedRecommendation[] => {
   const rows = csvString.trim().split('\n');
   if (rows.length < 2) return []; // Expecting header + at least one data row
 
-  const headers = rows[0].split(',').map(h => h.trim());
+  const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
   const plantIndex = headers.indexOf('plant');
   const reasonIndex = headers.indexOf('reason');
-  const waterIndex = headers.indexOf('waterRequirement');
-  const periodIndex = headers.indexOf('plantingPeriod');
+  const waterIndex = headers.indexOf('waterrequirement');
+  const periodIndex = headers.indexOf('plantingperiod');
   
-  if (plantIndex === -1 || reasonIndex === -1 || waterIndex === -1 || periodIndex === -1) {
-    console.error("CSV headers are missing or incorrect.");
-    return [];
-  }
+  // Fallback indices if exact match fails
+  const finalPlantIndex = plantIndex >= 0 ? plantIndex : 0;
+  const finalReasonIndex = reasonIndex >= 0 ? reasonIndex : 1;
+  const finalWaterIndex = waterIndex >= 0 ? waterIndex : 2;
+  const finalPeriodIndex = periodIndex >= 0 ? periodIndex : 3;
   
   return rows.slice(1).map(row => {
-    // Basic CSV parsing that handles values with commas if they are quoted
-    const values = row.match(/(".*?"|[^,"]+)(?=,\s*,|\s*$)/g) || [];
-    const cleanValues = values.map(v => v.trim().replace(/^"|"$/g, ''));
+    // Split by comma but handle quoted values
+    const values = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    
+    // Ensure we have enough values
+    while (values.length <= Math.max(finalPlantIndex, finalReasonIndex, finalWaterIndex, finalPeriodIndex)) {
+      values.push('');
+    }
     
     return {
-      plant: cleanValues[plantIndex] || '',
-      reason: cleanValues[reasonIndex] || '',
-      waterRequirement: cleanValues[waterIndex] || 'medium',
-      plantingPeriod: cleanValues[periodIndex] || 'N/A',
+      plant: values[finalPlantIndex] || '',
+      reason: values[finalReasonIndex] || '',
+      waterRequirement: values[finalWaterIndex] || 'medium',
+      plantingPeriod: values[finalPeriodIndex] || 'N/A',
     };
-  }).filter(rec => rec.plant); // Filter out any empty rows
+  }).filter(rec => rec.plant && rec.plant.trim()); // Filter out any empty rows
 };
 
 interface CropRecommendationsProps {
@@ -128,6 +133,9 @@ export default function CropRecommendations({ onCropSelect }: CropRecommendation
   
   const [currentMonthError, setCurrentMonthError] = useState<string | null>(null);
   const [nextMonthError, setNextMonthError] = useState<string | null>(null);
+  
+  const [lastFetchDate, setLastFetchDate] = useState<Date | null>(null);
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
   // Generate recommendations for a specific month
   const generateRecommendationsForMonth = async (
@@ -174,6 +182,21 @@ export default function CropRecommendations({ onCropSelect }: CropRecommendation
   // Generate recommendations when weather data or user profile changes
   useEffect(() => {
     if (weatherData && userProfile) {
+      const now = new Date();
+      
+      // Check if we have cached data from today
+      if (lastFetchDate && 
+          lastFetchDate.getDate() === now.getDate() &&
+          lastFetchDate.getMonth() === now.getMonth() &&
+          lastFetchDate.getFullYear() === now.getFullYear() &&
+          currentMonthCsv && 
+          nextMonthCsv) {
+        // Use cached data from today
+        setCurrentMonthLoading(false);
+        setNextMonthLoading(false);
+        return;
+      }
+      
       const currentDate = new Date();
       const nextDate = new Date(currentDate);
       nextDate.setMonth(nextDate.getMonth() + 1);
@@ -191,6 +214,8 @@ export default function CropRecommendations({ onCropSelect }: CropRecommendation
         setNextMonthLoading,
         setNextMonthError
       );
+      
+      setLastFetchDate(now);
     }
   }, [weatherData, userProfile]);
 
@@ -312,19 +337,23 @@ export default function CropRecommendations({ onCropSelect }: CropRecommendation
   const nextMonthTitle = `${getMonthName(nextDate)} - Best Crops`;
 
   return (
-    <div className="space-y-6">
-      {renderRecommendationSection(
-        currentMonthTitle,
-        currentMonthRecommendations,
-        currentMonthLoading,
-        currentMonthError
-      )}
-      {renderRecommendationSection(
-        nextMonthTitle,
-        nextMonthRecommendations,
-        nextMonthLoading,
-        nextMonthError
-      )}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div>
+        {renderRecommendationSection(
+          currentMonthTitle,
+          currentMonthRecommendations,
+          currentMonthLoading,
+          currentMonthError
+        )}
+      </div>
+      <div>
+        {renderRecommendationSection(
+          nextMonthTitle,
+          nextMonthRecommendations,
+          nextMonthLoading,
+          nextMonthError
+        )}
+      </div>
     </div>
   );
 }
