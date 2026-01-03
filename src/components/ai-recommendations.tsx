@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -21,8 +22,8 @@ import {
 } from 'lucide-react';
 import {
   getRecommendations,
-  type RecommendationResponse,
 } from '@/ai/flows/recommendation-flow';
+import { type RecommendationResponse } from '@/ai/flows/recommendation-types';
 import { useWeatherStore } from '@/hooks/use-weather-store';
 
 const iconMap = {
