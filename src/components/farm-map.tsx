@@ -82,7 +82,7 @@ export default function FarmMap({ devices, center }: FarmMapProps) {
                   path: isValve ? valvePath : motorPath,
                   fillColor: '#ffffff',
                   fillOpacity: 1,
-                  strokeColor: isActive ? (isValve ? '#4ade80' : '#facc15') : '#9ca3af',
+                  strokeColor: isActive ? (isValve ? '#3b82f6' : '#fb923c') : '#a1a1aa',
                   strokeWeight: 2,
                   scale: 0.8,
                   labelOrigin: new google.maps.Point(0, 25),
