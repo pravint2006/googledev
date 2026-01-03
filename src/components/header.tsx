@@ -38,7 +38,7 @@ import { signOut } from 'firebase/auth';
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/farms', label: 'Farms', icon: Tractor },
-  { href: '/farms/new', label: 'Add Farm', icon: PlusCircle },
+  { href: '/hardware', label: 'Hardware', icon: Cpu },
 ];
 
 export default function Header() {
@@ -119,6 +119,19 @@ export default function Header() {
                       {link.label}
                     </Link>
                   ))}
+                   <Link
+                      href="/farms/new"
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 transition-all',
+                        pathname === "/farms/new"
+                          ? 'bg-muted text-primary'
+                          : 'text-muted-foreground hover:text-primary'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      Add Farm
+                    </Link>
                 </nav>
               </SheetContent>
             </Sheet>
