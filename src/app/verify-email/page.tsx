@@ -33,12 +33,14 @@ export default function VerifyEmailPage() {
     if (!user || user.emailVerified) return;
 
     const interval = setInterval(async () => {
-      await user.reload();
-      // The onAuthStateChanged listener in the useUser hook will get the updated user
-      // and trigger the redirect effect above. We just need to trigger a re-check.
-      // To be safe, we can manually check here too.
-      if (auth?.currentUser?.emailVerified) {
-        router.push('/dashboard');
+      // It's crucial to get the latest user state directly from auth
+      if (auth?.currentUser) {
+        await auth.currentUser.reload();
+        // The onAuthStateChanged listener in useUser will see the change and trigger a re-render/redirect.
+        // We can also manually check to be safe.
+        if (auth.currentUser.emailVerified) {
+          router.push('/dashboard');
+        }
       }
     }, 3000); // Check every 3 seconds
 
@@ -47,10 +49,14 @@ export default function VerifyEmailPage() {
 
 
   const handleResendVerification = async () => {
-    if (!user) return;
+    // Use auth.currentUser for the most up-to-date user object
+    if (!auth?.currentUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Not logged in.' });
+        return;
+    }
     setIsSending(true);
     try {
-      await sendEmailVerification(user);
+      await sendEmailVerification(auth.currentUser);
       toast({
         title: 'Verification Email Sent',
         description: "We've sent a new verification link to your email address. Please check your inbox and spam folder.",
