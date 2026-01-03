@@ -2,6 +2,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { getRecommendations } from '@/ai/flows/crop-recommendation-flow';
+import { type CropRecommendationInput } from '@/ai/flows/crop-recommendation-types';
+
 import {
   Card,
   CardContent,
@@ -23,8 +26,6 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { useWeatherStore } from '@/hooks/use-weather-store';
-import { getRecommendations } from '@/ai/flows/crop-recommendation-flow';
-import { type CropRecommendationInput } from '@/ai/flows/crop-recommendation-types';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 
@@ -94,7 +95,7 @@ const parseCsvResponse = (csvString: string): ParsedRecommendation[] => {
   
   return rows.slice(1).map(row => {
     // Basic CSV parsing that handles values with commas if they are quoted
-    const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+    const values = row.match(/(".*?"|[^,"]+)(?=,\s*,|\s*$)/g) || [];
     const cleanValues = values.map(v => v.trim().replace(/^"|"$/g, ''));
     
     return {
