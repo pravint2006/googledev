@@ -61,7 +61,19 @@ const getRecommendationsFlow = ai.defineFlow(
       if (e.output) {
         console.error('AI raw output:', e.output);
       }
-      throw new Error('Failed to generate valid recommendations from AI.');
+      // Instead of throwing an error, return a default "safe" response
+      // that the UI can render without crashing.
+      return {
+        recommendations: [
+          {
+            plant: 'AI Error',
+            reason:
+              'Could not generate AI recommendations at this time. Please try again later.',
+            waterRequirement: 'medium',
+            plantingPeriod: 'N/A',
+          },
+        ],
+      };
     }
   }
 );
