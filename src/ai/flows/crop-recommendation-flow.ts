@@ -74,20 +74,47 @@ const getRecommendationsFlow = ai.defineFlow(
     outputSchema: CropRecommendationResponseSchema,
   },
   async (request) => {
-    try {
-      const { output } = await recommendationPrompt(request);
-      if (!output) {
-        throw new Error('AI returned no output.');
-      }
+    const { text, output } = await recommendationPrompt(request);
+
+    if (output) {
+      // If Genkit successfully parsed the output, return it directly.
       return output;
+    }
+
+    // If Genkit failed, try to manually parse the raw text output.
+    console.log("Genkit parsing failed, attempting manual parse of raw text:", text);
+    try {
+      // Look for a JSON block within markdown code fences
+      const jsonMatch = text?.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch && jsonMatch[1]) {
+        const extractedJson = JSON.parse(jsonMatch[1]);
+        // Validate the manually extracted JSON against the schema
+        const validationResult = CropRecommendationResponseSchema.safeParse(extractedJson);
+        if (validationResult.success) {
+          return validationResult.data;
+        } else {
+          console.error("Manually extracted JSON failed validation:", validationResult.error);
+        }
+      }
+      
+      // If no markdown block, try parsing the whole text
+      const parsedText = JSON.parse(text || '');
+      const validationResult = CropRecommendationResponseSchema.safeParse(parsedText);
+       if (validationResult.success) {
+          return validation_result.data;
+        } else {
+           console.error("Raw text JSON failed validation:", validationResult.error);
+        }
+
     } catch (e) {
-      console.error('Error during AI recommendation generation:', e);
-      // Log the raw output if available in the error for debugging
-      if (e instanceof Error && 'output' in e) {
-        console.error('AI raw output:', (e as any).output);
+      console.error('Error during manual AI recommendation parsing:', e);
+      if (text) {
+        console.error('AI raw text:', text);
       }
       throw new Error('Failed to generate valid recommendations from AI.');
     }
+
+    throw new Error('Failed to generate valid recommendations from AI.');
   }
 );
 
