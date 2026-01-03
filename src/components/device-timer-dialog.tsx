@@ -34,6 +34,13 @@ export default function DeviceTimerDialog({
     onConfirm(duration);
   };
 
+  const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    // If parseInt results in NaN (e.g., empty input), default to 1, otherwise use the greater of 1 and the parsed value.
+    setDuration(isNaN(value) ? 1 : Math.max(1, value));
+  };
+
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
@@ -49,7 +56,7 @@ export default function DeviceTimerDialog({
             id="duration"
             type="number"
             value={duration}
-            onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value, 10)))}
+            onChange={handleDurationChange}
             min="1"
           />
         </div>
