@@ -72,7 +72,7 @@ const recommendationPrompt = ai.definePrompt(
 
         CRITICAL INSTRUCTIONS:
         - Return ONLY raw JSON.
-        - Do NOT include markdown '`' characters.
+        - Do NOT include markdown \` characters.
         - Do NOT include explanations, notes, or any text outside of the JSON structure.
         - The JSON must EXACTLY match the 'Expected JSON structure' defined above.
         - Ensure all string values are enclosed in double quotes.
