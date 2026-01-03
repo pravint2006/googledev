@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Libraries } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { MapPin, AlertTriangle, Loader2, Save, Tractor, Windmill } from 'lucide-react';
+import { MapPin, AlertTriangle, Loader2, Save, Tractor, Fan } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -195,7 +195,7 @@ export default function MapPicker({
                 Valves ({placedValves}/{totalValves})
             </TabsTrigger>
             <TabsTrigger value="motor" disabled={totalMotors === 0}>
-                <Windmill className="h-4 w-4 mr-2" />
+                <Fan className="h-4 w-4 mr-2" />
                 Motors ({placedMotors}/{totalMotors})
             </TabsTrigger>
           </TabsList>
@@ -212,5 +212,3 @@ export default function MapPicker({
     </div>
   );
 }
-
-    
