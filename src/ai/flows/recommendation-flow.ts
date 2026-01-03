@@ -10,6 +10,9 @@ import {
 } from './recommendation-types';
 import { googleAI } from '@genkit-ai/google-genai';
 
+// A helper to add numbers in Handlebars
+const addHelper = (a: number, b: number) => a + b;
+
 const recommendationPrompt = ai.definePrompt({
   name: 'recommendationPrompt',
   model: googleAI.model('gemini-1.5-flash-latest'),
@@ -34,8 +37,12 @@ Based on this data, generate 3-4 diverse and practical recommendations for a typ
 
 For each recommendation, provide a title, a concise description, a category, and a suitable icon. Ensure the advice is relevant to the weather conditions. For example, if there is a high chance of rain, recommend reducing irrigation. If temperatures are very high, suggest measures to prevent heat stress on crops.
 
-Return the recommendations in the specified JSON format.
+Return ONLY valid JSON that strictly matches RecommendationResponseSchema. Do NOT include explanations, markdown, or any extra text outside of the JSON structure.
 `,
+  config: {
+    // Add the helper function to the prompt configuration
+    helpers: { add: addHelper },
+  }
 });
 
 const getRecommendationsFlow = ai.defineFlow(
@@ -45,11 +52,22 @@ const getRecommendationsFlow = ai.defineFlow(
     outputSchema: RecommendationResponseSchema,
   },
   async (request) => {
-    const { output } = await recommendationPrompt(request);
-    if (!output) {
-      throw new Error('Failed to generate recommendations from AI.');
+    try {
+      const { output } = await recommendationPrompt(request);
+      if (!output) {
+        throw new Error('AI returned no output.');
+      }
+      // The definePrompt will handle Zod validation. If it fails, it will throw.
+      return output;
+    } catch (e: any) {
+        console.error("Error during AI recommendation generation:", e);
+        // Log the raw output if available on the error object
+        if (e.output) {
+            console.error("Gemini raw output:", e.output);
+        }
+        // Re-throw a more informative error
+        throw new Error('Failed to generate valid recommendations from AI.');
     }
-    return output;
   }
 );
 
@@ -58,11 +76,3 @@ export async function getRecommendations(
 ): Promise<RecommendationResponse> {
   return getRecommendationsFlow(request);
 }
-
-// A helper to add numbers in Handlebars
-function add(a: number, b: number) {
-  return a + b;
-}
-// Genkit doesn't have built-in Handlebars helpers, so we can't register one this way.
-// The logic must be in the prompt itself or the data passed to it.
-// The above `add` function is just for illustration and won't be called.
