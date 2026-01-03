@@ -8,9 +8,11 @@ import {
   RecommendationResponse,
   RecommendationResponseSchema,
 } from './recommendation-types';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const recommendationPrompt = ai.definePrompt({
   name: 'recommendationPrompt',
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: RecommendationRequestSchema },
   output: { schema: RecommendationResponseSchema },
   prompt: `You are an expert agricultural AI assistant for "AgriGate Manager". Your task is to provide actionable, location-specific recommendations to farmers in India based on the provided weather data.
