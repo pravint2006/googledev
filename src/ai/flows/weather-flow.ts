@@ -3,6 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { WeatherInput, WeatherInputSchema, WeatherOutput, WeatherOutputSchema } from './weather-types';
+import { googleAI } from '@genkit-ai/google-genai';
 
 
 // Helper to fetch from a URL and parse JSON
@@ -19,6 +20,10 @@ const getWeatherFlow = ai.defineFlow(
     name: 'getWeatherFlow',
     inputSchema: WeatherInputSchema,
     outputSchema: WeatherOutputSchema,
+    config: {
+        model: googleAI.model('gemini-1.5-flash-latest'),
+        temperature: 0.2,
+    }
   },
   async (input) => {
     let { latitude, longitude, city } = input;
