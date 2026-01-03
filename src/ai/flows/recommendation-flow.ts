@@ -24,11 +24,11 @@ Analyze the following weather forecast:
   - {{this}}: Max Temp {{lookup ../weather.daily.temperatureMax @index}}°C, Min Temp {{lookup ../weather.daily.temperatureMin @index}}°C, Weather Code {{lookup ../weather.daily.weatherCode @index}}
   {{/each}}
 - Hourly Precipitation Chance (next 24 hours):
-  {{#each (slice weather.hourly.time 0 24)}}
+  {{#each weather.hourly.time}}
    - {{this}}: {{lookup ../weather.hourly.precipitationProbability @index}}%
   {{/each}}
 
-Based on this data, generate 3-4 diverse and practical recommendations for a typical farmer in this region of India. Focus on topics like optimal watering schedules, potential pest or disease outbreaks due to weather patterns, and suggestions for planting or harvesting.
+Based on this data for the next 24 hours and the 7-day forecast, generate 3-4 diverse and practical recommendations for a typical farmer in this region of India. Focus on topics like optimal watering schedules, potential pest or disease outbreaks due to weather patterns, and suggestions for planting or harvesting.
 
 For each recommendation, provide a title, a concise description, a category, and a suitable icon. Ensure the advice is relevant to the weather conditions. For example, if there is a high chance of rain, recommend reducing irrigation. If temperatures are very high, suggest measures to prevent heat stress on crops.
 
