@@ -137,6 +137,30 @@ export default function CropRecommendations() {
         </Card>
       );
     }
+    
+    // Check for the specific AI Error case
+    if (recommendations?.recommendations[0]?.plant === 'AI Error') {
+        const aiError = recommendations.recommendations[0];
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 font-headline">
+                        <BrainCircuit className="h-6 w-6 text-primary" />
+                        AI Crop Advisor
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>AI Error</AlertTitle>
+                        <AlertDescription>
+                            {aiError.reason}
+                        </AlertDescription>
+                    </Alert>
+                </CardContent>
+            </Card>
+        );
+    }
 
     if (!recommendations || recommendations.recommendations.length === 0) {
       return null; // Don't show the card if there are no recommendations
