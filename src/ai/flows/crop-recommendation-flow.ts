@@ -101,7 +101,7 @@ const getRecommendationsFlow = ai.defineFlow(
       const parsedText = JSON.parse(text || '');
       const validationResult = CropRecommendationResponseSchema.safeParse(parsedText);
        if (validationResult.success) {
-          return validation_result.data;
+          return validationResult.data;
         } else {
            console.error("Raw text JSON failed validation:", validationResult.error);
         }
