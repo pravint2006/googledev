@@ -13,7 +13,7 @@ import { Loader2, Droplet, Wind, Thermometer, MapPin, Search } from 'lucide-reac
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WeatherIcon } from './weather-icons';
-import { HourlyWeatherChart } from './weather-chart';
+import { HourlyWeatherChart } from './hourly-weather-chart';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { WindChart } from './wind-chart';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
@@ -251,9 +251,9 @@ export default function WeatherWidget() {
                 <AlertTitle className="text-red-300">Could Not Load Weather</AlertTitle>
                 <AlertDescription className="text-red-400/90">{error}</AlertDescription>
             </Alert>
-            <form onSubmit={handleSearch} className="flex gap-2 mt-4">
+            <form onSubmit={handleSearch} className="flex mt-4">
                  {renderSearch()}
-                <Button type="submit" variant="secondary">Search</Button>
+                <Button type="submit" variant="secondary" className='h-9'>Search</Button>
             </form>
         </Card>
     );
@@ -303,9 +303,9 @@ export default function WeatherWidget() {
       
         <Tabs defaultValue="temperature" className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-primary/70">
-                <TabsTrigger value="temperature" className="data-[state=active]:bg-primary/90">Temperature</TabsTrigger>
-                <TabsTrigger value="precipitation" className="data-[state=active]:bg-primary/90">Precipitation</TabsTrigger>
-                <TabsTrigger value="wind" className="data-[state=active]:bg-primary/90">Wind</TabsTrigger>
+                <TabsTrigger value="temperature" className="text-primary-foreground/70 data-[state=active]:bg-primary/90 data-[state=active]:text-primary-foreground">Temperature</TabsTrigger>
+                <TabsTrigger value="precipitation" className="text-primary-foreground/70 data-[state=active]:bg-primary/90 data-[state=active]:text-primary-foreground">Precipitation</TabsTrigger>
+                <TabsTrigger value="wind" className="text-primary-foreground/70 data-[state=active]:bg-primary/90 data-[state=active]:text-primary-foreground">Wind</TabsTrigger>
             </TabsList>
             <TabsContent value="temperature" className="mt-4">
                <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="#facc15" />
