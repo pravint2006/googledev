@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, setDoc, DocumentReference } from 'firebase/firestore';
 import { useToast } from './use-toast';
 
