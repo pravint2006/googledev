@@ -299,13 +299,17 @@ Step 6: Response displayed in chat UI
 
 ## 🚀 Deployment Notes
 
-### Environment Variables (Already Configured)
+### Environment Variables
+Add these to your `.env.local` file (do not commit to git):
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28
-GEMINI_API_KEY=AIzaSyDWyFbDfVFa-v6z9b_xqY9-6VecLEPu0ss
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAf0BpW4HGxWmnKF8Os6pl3SWcCpZ7spMA
-NEXT_PUBLIC_OPENWEATHER_API_KEY=4d852c6a75b17f73e56b0dad95ece376
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+GEMINI_API_KEY=your_gemini_api_key
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweather_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+GOOGLE_API_KEY=your_google_api_key
 ```
+**Note**: Never commit `.env.local` to version control. It's already in `.gitignore`.
 
 ### Firestore Security Rules
 Update your rules to include:

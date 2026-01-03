@@ -42,7 +42,6 @@ const navLinks = [
   { href: '/farms', label: 'Farms', icon: Tractor },
   { href: '/hardware', label: 'Hardware', icon: Cpu },
   { href: '/advisor', label: 'Advisor', icon: MessageSquare },
-  { href: '/profile', label: 'Profile', icon: User },
 ];
 
 export default function Header() {

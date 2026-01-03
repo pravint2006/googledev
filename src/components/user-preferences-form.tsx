@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import {
   Card,
@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export function UserPreferencesForm() {
-  const { updateUserProfile, isLoading: isProfileLoading } = useUserProfile();
+  const { userProfile, updateUserProfile, isLoading: isProfileLoading } = useUserProfile();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,6 +33,18 @@ export function UserPreferencesForm() {
     soilType: '',
     landOwned: '',
   });
+
+  // Load user profile data when it becomes available
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        waterIrrigation: userProfile.waterIrrigation || '',
+        waterLevel: userProfile.waterLevel || '',
+        soilType: userProfile.soilType || '',
+        landOwned: userProfile.landOwned?.toString() || '',
+      });
+    }
+  }, [userProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +69,7 @@ export function UserPreferencesForm() {
       await updateUserProfile({
         waterIrrigation: formData.waterIrrigation as 'drip' | 'flood' | 'sprinkler' | 'manual',
         waterLevel: formData.waterLevel as 'low' | 'medium' | 'high',
-        soilType: formData.soilType as 'clay' | 'sandy' | 'loamy' | 'chalky',
+        soilType: formData.soilType as 'clay' | 'sandy' | 'loamy' | 'chalky' | 'silt' | 'peaty',
         landOwned: parseFloat(formData.landOwned),
         isProfileComplete: true,
       });
