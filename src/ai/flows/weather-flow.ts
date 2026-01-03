@@ -23,35 +23,51 @@ const getWeatherFlow = ai.defineFlow(
   async (input) => {
     let { latitude, longitude, city } = input;
     let locationName = city;
+    let fullLocationName: string | undefined;
+    let pincode: string | undefined;
+
+    const nominatimHeaders = { 'User-Agent': 'AgriGateManager/1.0' };
 
     // SCENARIO 1: We have coordinates. This is the priority.
     // We will use these coordinates to get weather and find a name.
     if (latitude !== undefined && longitude !== undefined) {
-        // If we don't have a name, find one.
-        if (!locationName) {
-            const reverseGeocodingUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+        if (!locationName) { // We need to find the name
+            const reverseGeocodingUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`;
             try {
-                const reverseGeoResult = await fetchJson(reverseGeocodingUrl, {
-                    headers: { 'User-Agent': 'AgriGateManager/1.0' }
-                });
+                const reverseGeoResult = await fetchJson(reverseGeocodingUrl, { headers: nominatimHeaders });
                 const address = reverseGeoResult.address;
                 locationName = address.city || address.town || address.village || address.suburb || "Current Location";
+                fullLocationName = reverseGeoResult.display_name;
+                pincode = address.postcode;
             } catch (e) {
                 console.warn("Reverse geocoding failed, using default name.", e);
                 locationName = "Current Location";
             }
+        } else { // We have a name, but let's get full details anyway for consistency
+             const searchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&limit=1&addressdetails=1`;
+             try {
+                const results = await fetchJson(searchUrl, { headers: nominatimHeaders });
+                if (results && results.length > 0) {
+                    const geoResult = results[0];
+                    latitude = parseFloat(geoResult.lat);
+                    longitude = parseFloat(geoResult.lon);
+                    fullLocationName = geoResult.display_name;
+                    pincode = geoResult.address?.postcode;
+                }
+             } catch(e) {
+                console.warn(`Could not enrich location for ${locationName}`, e);
+             }
         }
     } 
     // SCENARIO 2: We ONLY have a city name. 
     // We must find coordinates for it using Nominatim.
     else if (city && (latitude === undefined || longitude === undefined)) {
-        const nominatimHeaders = { 'User-Agent': 'AgriGateManager/1.0' };
         let geoResult;
         let foundLocation = false;
-
+        
         // Step 1: Search for "<city>, India"
         try {
-            const indiaSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', India')}&format=json&limit=1`;
+            const indiaSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', India')}&format=json&limit=1&addressdetails=1`;
             const results = await fetchJson(indiaSearchUrl, { headers: nominatimHeaders });
             if (results && results.length > 0) {
                 geoResult = results[0];
@@ -64,7 +80,7 @@ const getWeatherFlow = ai.defineFlow(
         // Step 2: Fallback to searching just for "<city>"
         if (!foundLocation) {
             try {
-                const globalSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+                const globalSearchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&addressdetails=1`;
                 const results = await fetchJson(globalSearchUrl, { headers: nominatimHeaders });
                 if (results && results.length > 0) {
                     geoResult = results[0];
@@ -77,11 +93,11 @@ const getWeatherFlow = ai.defineFlow(
         if (geoResult) {
             latitude = parseFloat(geoResult.lat);
             longitude = parseFloat(geoResult.lon);
-            // Use the name from the result for consistency
             const addressParts = geoResult.display_name.split(',');
-            locationName = addressParts[0];
+            locationName = addressParts[0]; // The primary name of the location
+            fullLocationName = geoResult.display_name;
+            pincode = geoResult.address?.postcode;
         } else {
-            // Step 3: If no location is found after both searches, throw a specific error.
              throw new Error(`Could not find location: ${city}`);
         }
     }
@@ -101,6 +117,8 @@ const getWeatherFlow = ai.defineFlow(
       longitude: weatherData.longitude,
       timezone: weatherData.timezone,
       locationName: locationName || "Unknown Location",
+      fullLocationName: fullLocationName,
+      pincode: pincode,
       current: {
         time: weatherData.current.time,
         temperature: Math.round(weatherData.current.temperature_2m),
@@ -110,7 +128,7 @@ const getWeatherFlow = ai.defineFlow(
         isDay: weatherData.current.is_day,
       },
       hourly: {
-        time: weatherData.hourly.time.slice(0, 24 * 7), // Get all 7 days of hourly data
+        time: weatherData.hourly.time.slice(0, 24 * 7),
         temperature: weatherData.hourly.temperature_2m.slice(0, 24 * 7).map(Math.round),
         precipitationProbability: weatherData.hourly.precipitation_probability.slice(0, 24 * 7),
         windSpeed: weatherData.hourly.wind_speed_10m.slice(0, 24 * 7).map((ws: number) => Math.round(ws)),

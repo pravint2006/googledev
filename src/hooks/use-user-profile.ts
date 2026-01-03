@@ -11,6 +11,8 @@ export interface WeatherLocation {
   latitude?: number;
   longitude?: number;
   city?: string;
+  location?: string;
+  pincode?: string;
 }
 
 // Define the shape of the user profile document in Firestore

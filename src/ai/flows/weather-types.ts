@@ -15,6 +15,8 @@ export const WeatherOutputSchema = z.object({
   longitude: z.number(),
   timezone: z.string(),
   locationName: z.string(),
+  fullLocationName: z.string().optional(),
+  pincode: z.string().optional(),
   current: z.object({
     time: z.string(),
     temperature: z.number(),

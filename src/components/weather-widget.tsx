@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 
 function WeatherSkeleton() {
   return (
-    <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
+    <Card className="bg-primary-dark/80 text-white border-green-900/50 p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
         <Loader2 className="h-10 w-10 animate-spin text-slate-400" />
         <p className="mt-4 text-slate-400">Fetching weather data...</p>
     </Card>
@@ -31,15 +31,13 @@ function WeatherSkeleton() {
 const libraries: ('places')[] = ['places'];
 
 export default function WeatherWidget() {
-  const { userProfile } = useUserProfile();
+  const { userProfile, updateUserProfile } = useUserProfile();
   const [weatherData, setWeatherData] = useState<WeatherOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-
-  const { updateUserProfile } = useUserProfile();
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
@@ -53,8 +51,15 @@ export default function WeatherWidget() {
       const data = await getWeather(params);
       setWeatherData(data);
        if (data) {
-        // When updating profile, use the name returned by our weather flow for consistency
-        updateUserProfile({ lastWeatherLocation: { latitude: data.latitude, longitude: data.longitude, city: data.locationName }});
+        updateUserProfile({ 
+          lastWeatherLocation: { 
+            latitude: data.latitude, 
+            longitude: data.longitude, 
+            city: data.locationName,
+            location: data.fullLocationName,
+            pincode: data.pincode
+          }
+        });
       }
     } catch (e: any) {
       setError(e.message || 'Could not load weather data.');
@@ -66,10 +71,11 @@ export default function WeatherWidget() {
   useEffect(() => {
     // 1. Try fetching with last known location from user profile
     if (userProfile?.lastWeatherLocation) {
-        if(userProfile.lastWeatherLocation.city) {
-            fetchWeather({ city: userProfile.lastWeatherLocation.city });
-        } else if (userProfile.lastWeatherLocation.latitude && userProfile.lastWeatherLocation.longitude){
-            fetchWeather({ latitude: userProfile.lastWeatherLocation.latitude, longitude: userProfile.lastWeatherLocation.longitude });
+        const { city, latitude, longitude } = userProfile.lastWeatherLocation;
+        if(city) {
+            fetchWeather({ city });
+        } else if (latitude && longitude){
+            fetchWeather({ latitude, longitude });
         } else {
              // Fallback if profile data is incomplete
             fetchWeather({ city: 'Delhi' });
@@ -123,21 +129,21 @@ export default function WeatherWidget() {
     }
   };
   
-  const weatherDescription = (code: number): string => {
-      const descriptions: { [key: number]: string } = {
-          0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-          45: 'Fog', 48: 'Depositing rime fog',
-          51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
-          56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
-          61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
-          66: 'Light freezing rain', 67: 'Heavy freezing rain',
-          71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
-          77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
-          82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
-          95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
-      };
-      return descriptions[code] || 'Unknown';
-  };
+    const weatherDescription = (code: number): string => {
+        const descriptions: { [key: number]: string } = {
+            0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+            45: 'Fog', 48: 'Depositing rime fog',
+            51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+            56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
+            61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
+            66: 'Light freezing rain', 67: 'Heavy freezing rain',
+            71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
+            77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
+            82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
+            95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
+        };
+        return descriptions[code] || 'Unknown';
+    };
   
     // All hooks must be called before this point.
   const displayData = useMemo(() => {
@@ -211,7 +217,7 @@ export default function WeatherWidget() {
 
   const renderSearch = () => {
     if (!isLoaded) {
-      return <Input placeholder="Loading search..." disabled className="bg-slate-700/50 border-slate-600 text-white h-9 text-sm w-full max-w-xs" />
+      return <Input placeholder="Loading search..." disabled className="bg-primary-dark/50 border-green-900 text-white h-9 text-sm w-full max-w-xs" />
     }
     return (
         <Autocomplete
@@ -227,7 +233,7 @@ export default function WeatherWidget() {
               value={citySearch} 
               onChange={(e) => setCitySearch(e.target.value)} 
               placeholder="Search for a city in India..." 
-              className="bg-slate-700/50 border-slate-600 text-white h-9 text-sm w-full"
+              className="bg-primary-dark/50 border-green-900 text-white h-9 text-sm w-full"
             />
         </Autocomplete>
     );
@@ -240,7 +246,7 @@ export default function WeatherWidget() {
 
   if (error) {
     return (
-        <Card className="bg-slate-800/80 text-white border-destructive/50 p-6">
+        <Card className="bg-primary-dark/80 text-white border-destructive/50 p-6">
              <Alert variant="destructive" className='border-0 text-white'>
                 <AlertTitle className="text-red-400">Could Not Load Weather</AlertTitle>
                 <AlertDescription className="text-red-300/90">{error}</AlertDescription>
@@ -257,19 +263,24 @@ export default function WeatherWidget() {
     return null;
   }
   
-  const { daily, locationName } = weatherData;
+  const { daily, locationName, fullLocationName, pincode } = weatherData;
 
+  const displayLocation = fullLocationName ? `${fullLocationName}${pincode ? ` - ${pincode}` : ''}` : `${locationName}${pincode ? ` - ${pincode}` : ''}`;
 
   return (
-    <Card className="bg-slate-800/80 text-white border-slate-700/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
+    <Card className="bg-primary-dark/80 text-white border-green-900/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
         <div className="flex justify-between items-start gap-4">
             <div>
-                <p className="flex items-center gap-1"><MapPin size={14} />{locationName}</p>
-                <p className="text-xs text-slate-400">{format(new Date(), "eeee, MMMM d 'at' h:mm a")}</p>
+                <p className="flex items-center gap-2 text-lg"><MapPin size={16} />{locationName}</p>
+                 {(fullLocationName || pincode) && (
+                    <p className="text-xs text-slate-400 ml-6 truncate" title={displayLocation}>
+                        {displayLocation.split(',').slice(1).join(',').trim()}
+                    </p>
+                )}
             </div>
             <form onSubmit={handleSearch} className="flex gap-2 w-full max-w-xs">
               {renderSearch()}
-              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-slate-700"><Search size={16} /></Button>
+              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-green-900/50"><Search size={16} /></Button>
             </form>
         </div>
 
@@ -287,23 +298,23 @@ export default function WeatherWidget() {
         </div>
       
         <Tabs defaultValue="temperature" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-900/50">
+            <TabsList className="grid w-full grid-cols-3 bg-primary-dark/60">
                 <TabsTrigger value="temperature">Temperature</TabsTrigger>
                 <TabsTrigger value="precipitation">Precipitation</TabsTrigger>
                 <TabsTrigger value="wind">Wind</TabsTrigger>
             </TabsList>
             <TabsContent value="temperature" className="mt-4">
-               <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="hsl(48, 96%, 58%)" />
+               <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="#facc15" />
             </TabsContent>
             <TabsContent value="precipitation" className="mt-4">
-                <HourlyWeatherChart data={hourlyPrecipitationData} unit="%" color="hsl(205, 87%, 55%)" />
+                <HourlyWeatherChart data={hourlyPrecipitationData} unit="%" color="#38bdf8" />
             </TabsContent>
             <TabsContent value="wind" className="mt-4">
                  <WindChart data={hourlyWindData} />
             </TabsContent>
         </Tabs>
 
-        <div className="mt-6 border-t border-slate-700/50 pt-4">
+        <div className="mt-6 border-t border-green-900/50 pt-4">
              <div className="grid grid-cols-7 gap-1">
                 {daily.time.map((day, i) => {
                     const dayDate = parseISO(day);
@@ -313,7 +324,7 @@ export default function WeatherWidget() {
                             onClick={() => setSelectedDayIndex(i)}
                             className={cn(
                                 'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors duration-200',
-                                selectedDayIndex === i ? 'bg-slate-700/60' : 'hover:bg-slate-700/30'
+                                selectedDayIndex === i ? 'bg-green-900/50' : 'hover:bg-green-900/30'
                             )}
                         >
                             <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
