@@ -216,7 +216,7 @@ export default function WeatherWidget() {
 
   const renderSearch = () => {
     if (!isLoaded) {
-      return <Input placeholder="Loading search..." disabled className="bg-primary/80 border-green-700 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full max-w-xs" />
+      return <Input placeholder="Loading search..." disabled className="bg-primary/80 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full max-w-xs" />
     }
     return (
         <Autocomplete
@@ -232,7 +232,7 @@ export default function WeatherWidget() {
               value={citySearch} 
               onChange={(e) => setCitySearch(e.target.value)} 
               placeholder="Search for a city in India..." 
-              className="bg-primary/80 border-green-700 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full"
+              className="bg-primary/80 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full"
             />
         </Autocomplete>
     );
@@ -267,22 +267,24 @@ export default function WeatherWidget() {
   const displayLocation = fullLocationName ? `${fullLocationName}${pincode ? ` - ${pincode}` : ''}` : `${locationName}${pincode ? ` - ${pincode}` : ''}`;
 
   return (
-    <Card className="bg-primary/90 text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
+    <Card className="relative bg-primary/90 text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-primary/20">
+        
+        <form onSubmit={handleSearch} className="absolute top-4 right-4 z-10 flex gap-2 w-full max-w-xs">
+          {renderSearch()}
+          <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary">
+            <Search size={16} />
+          </Button>
+        </form>
+        
         <div className="flex justify-between items-start gap-4">
             <div>
                 <p className="flex items-center gap-2 text-lg"><MapPin size={16} />{locationName}</p>
                  {(fullLocationName || pincode) && (
-                    <p className="text-xs text-primary-foreground/70 ml-6 truncate" title={displayLocation}>
+                    <p className="text-xs text-primary-foreground/70 ml-6 truncate max-w-md" title={displayLocation}>
                         {displayLocation.split(',').slice(1).join(',').trim()}
                     </p>
                 )}
             </div>
-            <form onSubmit={handleSearch} className="flex gap-2 w-full max-w-xs">
-              {renderSearch()}
-              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary">
-                <Search size={16} />
-              </Button>
-            </form>
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-center my-6 md:my-10 gap-4 md:gap-8 text-center md:text-left">
@@ -300,9 +302,9 @@ export default function WeatherWidget() {
       
         <Tabs defaultValue="temperature" className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-primary/80">
-                <TabsTrigger value="temperature">Temperature</TabsTrigger>
-                <TabsTrigger value="precipitation">Precipitation</TabsTrigger>
-                <TabsTrigger value="wind">Wind</TabsTrigger>
+                <TabsTrigger value="temperature" className="data-[state=active]:bg-primary/70">Temperature</TabsTrigger>
+                <TabsTrigger value="precipitation" className="data-[state=active]:bg-primary/70">Precipitation</TabsTrigger>
+                <TabsTrigger value="wind" className="data-[state=active]:bg-primary/70">Wind</TabsTrigger>
             </TabsList>
             <TabsContent value="temperature" className="mt-4">
                <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="#facc15" />
@@ -315,7 +317,7 @@ export default function WeatherWidget() {
             </TabsContent>
         </Tabs>
 
-        <div className="mt-6 border-t border-primary pt-4">
+        <div className="mt-6 border-t border-primary/50 pt-4">
              <div className="grid grid-cols-7 gap-1">
                 {daily.time.map((day, i) => {
                     const dayDate = parseISO(day);
@@ -325,7 +327,7 @@ export default function WeatherWidget() {
                             onClick={() => setSelectedDayIndex(i)}
                             className={cn(
                                 'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors duration-200',
-                                selectedDayIndex === i ? 'bg-primary' : 'hover:bg-primary/80'
+                                selectedDayIndex === i ? 'bg-primary/70' : 'hover:bg-primary/80'
                             )}
                         >
                             <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
@@ -343,5 +345,3 @@ export default function WeatherWidget() {
     </Card>
   );
 }
-
-    
