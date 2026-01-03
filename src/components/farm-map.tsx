@@ -99,3 +99,5 @@ export default function FarmMap({ devices, center }: FarmMapProps) {
     </GoogleMap>
   );
 }
+
+    

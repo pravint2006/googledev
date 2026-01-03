@@ -18,6 +18,8 @@ import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { WindChart } from './wind-chart';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { type WeatherLocation } from '@/hooks/use-user-profile';
+
 
 function WeatherSkeleton() {
   return (
@@ -57,7 +59,7 @@ export default function WeatherWidget() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries,
   });
 
@@ -97,15 +99,20 @@ export default function WeatherWidget() {
       const data = await getWeather(params);
       setWeatherData(data);
        if (data) {
-        updateUserProfile({ 
-          lastWeatherLocation: { 
-            latitude: data.latitude, 
-            longitude: data.longitude, 
-            city: data.locationName,
-            location: data.fullLocationName,
-            pincode: data.pincode
-          }
-        });
+        // Construct a location object, filtering out any undefined values
+        // to prevent Firestore errors.
+        const locationToSave: WeatherLocation = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          city: data.locationName,
+        };
+        if (data.fullLocationName) {
+          locationToSave.location = data.fullLocationName;
+        }
+        if (data.pincode) {
+          locationToSave.pincode = data.pincode;
+        }
+        updateUserProfile({ lastWeatherLocation: locationToSave });
       }
     } catch (e: any) {
       setError(e.message || 'Could not load weather data.');
@@ -346,3 +353,5 @@ export default function WeatherWidget() {
     </Card>
   );
 }
+
+    
