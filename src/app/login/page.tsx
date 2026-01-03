@@ -41,12 +41,13 @@ export default function LoginPage() {
 
                 if (!userDoc.exists()) {
                     // This is a new user, create their profile document
-                    const [firstName, ...lastName] = (user.displayName || "").split(" ");
+                    const [firstName, ...lastNameParts] = (user.displayName || "").split(" ");
+                    const lastName = lastNameParts.join(' ');
                     await setDoc(userDocRef, {
                         id: user.uid,
                         email: user.email,
                         firstName: firstName || '',
-                        lastName: lastName.join(' ') || '',
+                        lastName: lastName || '',
                     });
                      toast({ title: 'Welcome!', description: 'Your account has been created.' });
                 }

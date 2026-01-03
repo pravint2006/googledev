@@ -75,7 +75,8 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
 
       if (userCredential.user) {
         const user = userCredential.user;
-        const [firstName, ...lastName] = displayName.split(' ');
+        const [firstName, ...lastNameParts] = displayName.split(' ');
+        const lastName = lastNameParts.join(' ');
         
         await updateProfile(user, {
           displayName: displayName,
@@ -86,7 +87,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
           id: user.uid,
           email: user.email,
           firstName: firstName || '',
-          lastName: lastName.join(' ') || '',
+          lastName: lastName || '',
         });
         
         await sendEmailVerification(user);

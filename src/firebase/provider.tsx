@@ -68,7 +68,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     } else {
       // NO USER LOGGED IN
-      if (!isPublicPath && pathname !== '/') {
+      if (!isPublicPath) {
         // If trying to access a protected route, redirect to login.
         router.push('/login');
       }
@@ -90,7 +90,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   // 2. The user is authenticated.
   // 3. The user is not authenticated, but is on a public path.
   const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
-  const canRenderContent = isUserLoading || user || isPublicPath || pathname === '/';
+  const canRenderContent = isUserLoading || user || isPublicPath;
 
 
   if (!canRenderContent) {
