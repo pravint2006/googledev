@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFarmStore } from '@/hooks/use-farm-store';
-import { type GateValve, type Farm } from '@/lib/data';
+import { type GateValve, type Farm, type Motor } from '@/lib/data';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from './ui/progress';
@@ -29,14 +29,15 @@ import MapPicker from './map-picker';
 
 const formSchema = z.object({
   farmName: z.string().min(3, 'Farm name must be at least 3 characters.'),
-  valveCount: z.coerce.number().min(1, 'You must have at least 1 valve.').max(20, 'Maximum 20 valves allowed.'),
+  valveCount: z.coerce.number().min(0, 'Valve count cannot be negative.').max(20, 'Maximum 20 valves allowed.'),
+  motorCount: z.coerce.number().min(0, 'Motor count cannot be negative.').max(10, 'Maximum 10 motors allowed.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function FarmForm() {
   const [step, setStep] = useState(1);
-  const [valves, setValves] = useState<Omit<GateValve, 'id' | 'status'>[]>([]);
+  const [devices, setDevices] = useState<{ type: 'valve' | 'motor', name: string, position: { lat: number, lng: number } }[]>([]);
   const router = useRouter();
   const { addFarm, isSubmitting: isStoreSubmitting } = useFarmStore();
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export default function FarmForm() {
     defaultValues: {
       farmName: '',
       valveCount: 1,
+      motorCount: 0,
     },
     mode: 'onChange',
   });
@@ -54,9 +56,7 @@ export default function FarmForm() {
   const watchedValues = watch();
 
   const onFirstStepSubmit = () => {
-    // We no longer pre-populate the valves array.
-    // The user will add them manually on the map.
-    setValves([]); 
+    setDevices([]); 
     setStep(2);
   };
 
@@ -64,31 +64,52 @@ export default function FarmForm() {
     setStep(1);
   };
   
-  const handleFinalSubmit = async (finalValves: Omit<GateValve, 'id' | 'status'>[]) => {
-    const completeValves = finalValves.map((valve, index) => ({
-      ...valve,
-      id: `valve-${Date.now()}-${index}`,
-      status: 'closed' as const,
-    }));
-    
-     if (completeValves.length === 0) {
+  const handleFinalSubmit = async (finalDevices: { type: 'valve' | 'motor', name: string, position: { lat: number, lng: number } }[]) => {
+    const totalDevices = watchedValues.valveCount + watchedValues.motorCount;
+     if (finalDevices.length < totalDevices) {
         toast({
             variant: "destructive",
-            title: "No Valves Placed",
-            description: "Please place at least one valve on the map.",
+            title: "Placement Incomplete",
+            description: `Please place all ${totalDevices} devices on the map.`,
         });
         return;
     }
     
-    const avgLat = completeValves.reduce((sum, v) => sum + v.position.lat, 0) / completeValves.length;
-    const avgLng = completeValves.reduce((sum, v) => sum + v.position.lng, 0) / completeValves.length;
+    const gateValves: GateValve[] = finalDevices
+      .filter(d => d.type === 'valve')
+      .map((valve, index) => ({
+        ...valve,
+        id: `valve-${Date.now()}-${index}`,
+        status: 'closed' as const,
+      }));
+      
+    const motors: Motor[] = finalDevices
+      .filter(d => d.type === 'motor')
+      .map((motor, index) => ({
+        ...motor,
+        id: `motor-${Date.now()}-${index}`,
+        status: 'off' as const,
+      }));
+
+    if (finalDevices.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Devices Placed",
+        description: "Please place at least one valve or motor on the map.",
+      });
+      return;
+    }
+    
+    const avgLat = finalDevices.reduce((sum, v) => sum + v.position.lat, 0) / finalDevices.length;
+    const avgLng = finalDevices.reduce((sum, v) => sum + v.position.lng, 0) / finalDevices.length;
     const centerLocation = new GeoPoint(avgLat, avgLng);
     setFarmLocation(centerLocation);
 
     const newFarmData: Omit<Farm, 'id'> = {
         name: watchedValues.farmName,
         location: centerLocation,
-        gateValves: completeValves,
+        gateValves,
+        motors,
     };
     
     await addFarm(newFarmData);
@@ -103,17 +124,15 @@ export default function FarmForm() {
 
   const progressValue = (step / 2) * 100;
   
-  const isSaveDisabled = isStoreSubmitting;
-
   return (
     <Card>
       <CardHeader>
         <Progress value={progressValue} className="mb-4 h-2" />
-        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Place Valves'}</CardTitle>
+        <CardTitle className="font-headline">Step {step}: {step === 1 ? 'Farm Details' : 'Place Devices'}</CardTitle>
         <CardDescription>
             {step === 1 
-                ? 'Provide a name and the number of valves for your new farm.' 
-                : 'Click on the map to place your gate valves.'}
+                ? 'Provide a name and the number of devices for your new farm.' 
+                : 'Click on the map to place your gate valves and motors.'}
         </CardDescription>
       </CardHeader>
         <AnimatePresence mode="wait">
@@ -136,14 +155,25 @@ export default function FarmForm() {
                                 />
                                 {errors.farmName && <p className="text-sm font-medium text-destructive mt-1">{errors.farmName.message}</p>}
                             </div>
-                            <div>
-                                <Label htmlFor="valveCount">Number of Gate Valves</Label>
-                                <Controller
-                                    name="valveCount"
-                                    control={control}
-                                    render={({ field }) => <Input {...field} type="number" min="1" max="20" />}
-                                />
-                                {errors.valveCount && <p className="text-sm font-medium text-destructive mt-1">{errors.valveCount.message}</p>}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <Label htmlFor="valveCount">Number of Gate Valves</Label>
+                                  <Controller
+                                      name="valveCount"
+                                      control={control}
+                                      render={({ field }) => <Input {...field} type="number" min="0" max="20" />}
+                                  />
+                                  {errors.valveCount && <p className="text-sm font-medium text-destructive mt-1">{errors.valveCount.message}</p>}
+                              </div>
+                               <div>
+                                  <Label htmlFor="motorCount">Number of Motors</Label>
+                                  <Controller
+                                      name="motorCount"
+                                      control={control}
+                                      render={({ field }) => <Input {...field} type="number" min="0" max="10" />}
+                                  />
+                                  {errors.motorCount && <p className="text-sm font-medium text-destructive mt-1">{errors.motorCount.message}</p>}
+                              </div>
                             </div>
                         </CardContent>
                         <CardFooter className="justify-end">
@@ -157,10 +187,11 @@ export default function FarmForm() {
                         <CardContent>
                             <div className="w-full h-96 md:h-[60vh]">
                                 <MapPicker 
-                                  valves={valves} 
+                                  devices={devices} 
                                   onFinalSubmit={handleFinalSubmit} 
                                   isSubmitting={isStoreSubmitting}
                                   totalValves={getValues('valveCount')}
+                                  totalMotors={getValues('motorCount')}
                                 />
                             </div>
                         </CardContent>
@@ -169,7 +200,6 @@ export default function FarmForm() {
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                             </Button>
-                             {/* The Save button is now inside the MapPicker component */}
                         </CardFooter>
                     </>
                 )}
@@ -178,3 +208,5 @@ export default function FarmForm() {
     </Card>
   );
 }
+
+    

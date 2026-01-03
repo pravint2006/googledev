@@ -3,123 +3,175 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Code, Cpu, Rss, Waypoints } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function HardwarePage() {
-  const arduinoCode = `
+  const valveControllerCode = `
 // Firebase-ESP32 Library: https://github.com/mobizt/Firebase-ESP-Client
 #include <Firebase_ESP_Client.h>
 #include "addons/TokenHelper.h"
 
-// Your GSM Module's APN credentials
+// --- DEVICE CONFIGURATION ---
+#define DEVICE_TYPE "VALVE_CONTROLLER"
+
+// --- YOUR CREDENTIALS & IDs ---
 const char* APN = "YOUR_APN"; // e.g., "internet" for most carriers
 const char* GPRS_USER = "";
 const char* GPRS_PASS = "";
 
-// Your Firebase project credentials from your app's config
-#define API_KEY "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28"
-#define DATABASE_URL "dev-61141163-629c6.firebaseio.com"
+#define API_KEY "YOUR_FIREBASE_API_KEY"
+#define DATABASE_URL "YOUR_FIREBASE_DB_URL"
 
-// The specific User and Farm this device belongs to
 #define USER_ID "THE_USER_ID_FOR_THIS_FARM"
 #define FARM_ID "THE_FARM_ID_FOR_THIS_DEVICE"
-
-// The specific Valve this device controls
 #define VALVE_ID "THE_GATE_VALVE_ID_FOR_THIS_DEVICE"
 
-// Pin connected to the Relay Module
+// --- HARDWARE PINS ---
 #define RELAY_PIN 23
 
-// Firebase objects
+// --- FIREBASE OBJECTS ---
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
-bool taskCompleted = false;
 
-// Callback function that runs when the valve status changes in Firestore
 void streamCallback(StreamData data) {
   Serial.println("Stream data received!");
-
-  // The path to the specific field that changed
-  String path = data.dataPath();
-  Serial.printf("Path: %s\\n", path.c_str());
-
-  // Check if the change is for the 'status' field of any valve.
-  // The path will be /<index>/status, so we look for the suffix.
-  if (path.endsWith("/status")) {
-    String valveIdFromPath; // You may need to parse this if structure is complex
-    
-    // Find which valve this update is for by finding the parent document
-    // For now, we assume we're listening to one valve, but this shows the principle
-    
+  if (data.dataType() == "string" && data.dataPath().endsWith("/status")) {
     String newStatus = data.stringData();
-    Serial.printf("New Valve Status for a valve is: %s\\n", newStatus.c_str());
+    Serial.printf("New Valve Status: %s\\n", newStatus.c_str());
 
     if (newStatus == "open") {
-      digitalWrite(RELAY_PIN, HIGH); // Turn the relay ON
+      digitalWrite(RELAY_PIN, HIGH);
       Serial.println("RELAY ON - Valve Opened");
-    } else if (newStatus == "closed") {
-      digitalWrite(RELAY_PIN, LOW); // Turn the relay OFF
+    } else {
+      digitalWrite(RELAY_PIN, LOW);
       Serial.println("RELAY OFF - Valve Closed");
     }
   }
 }
 
 void streamTimeoutCallback(bool timeout) {
-  if (timeout) {
-    Serial.println("Stream timeout, restarting stream...");
-  }
+  if (timeout) Serial.println("Stream timeout, restarting stream...");
 }
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW); // Ensure valve is closed on startup
-
   Serial.println("--- AgriGate Valve Controller ---");
 
-  // --- Connect to GSM ---
-  // (Your specific GSM module initialization code goes here)
-  // This is a generic example. You will need to adapt this part
-  // for your specific GSM module (e.g., SIM800L, SIM7600).
+  // --- CONNECT TO GSM (ADAPT FOR YOUR MODULE) ---
   Serial.println("Initializing GSM module...");
-  // e.g., Serial2.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
-  // delay(3000);
-  // modem.init();
-  // modem.gprsConnect(APN, GPRS_USER, GPRS_PASS);
-  // ... wait for connection
+  // Your specific GSM module init code here (e.g., for SIM800, SIM7600)
   Serial.println("GSM Connected.");
 
-
-  // --- Configure Firebase ---
+  // --- CONFIGURE FIREBASE ---
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  // For device authentication, you can use a custom token or a dedicated device-level account
   auth.user.email = "device@example.com";
   auth.user.password = "a_secure_password_for_device";
-
   config.token_status_callback = tokenStatusCallback;
   Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true); // For GSM, this helps manage reconnections
+  Firebase.reconnectWiFi(true);
 
-  // --- Start Listening to Firestore ---
-  // Path to the specific gate valve document this device will control
-  String documentPath = "users/" + String(USER_ID) + "/farms/" + String(FARM_ID) + "/gateValves/" + String(VALVE_ID);
-  
-  if (!Firebase.Firestore.beginStream(&fbdo, documentPath.c_str())) {
+  // --- START LISTENING TO FIRESTORE ---
+  String path = "users/" + String(USER_ID) + "/farms/" + String(FARM_ID) + "/gateValves/" + String(VALVE_ID);
+  if (!Firebase.Firestore.beginStream(&fbdo, path.c_str())) {
     Serial.printf("Stream begin error: %s\\n", fbdo.errorReason().c_str());
     return;
   }
-
   Firebase.Firestore.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
-  Serial.printf("Listening for changes at: %s\\n", documentPath.c_str());
+  Serial.printf("Listening for changes at: %s\\n", path.c_str());
 }
 
 void loop() {
-  // This is required for the library to process incoming events
-  if (Firebase.ready() && !taskCompleted) {
-    taskCompleted = true; // Prevents re-running setup logic
+  // Firebase library requires this call to process events.
+  // The logic is handled in the streamCallback.
+  delay(1000);
+}
+  `;
+
+  const motorControllerCode = `
+// Firebase-ESP32 Library: https://github.com/mobizt/Firebase-ESP-Client
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+
+// --- DEVICE CONFIGURATION ---
+#define DEVICE_TYPE "MOTOR_CONTROLLER"
+
+// --- YOUR CREDENTIALS & IDs ---
+const char* APN = "YOUR_APN"; // e.g., "internet" for most carriers
+const char* GPRS_USER = "";
+const char* GPRS_PASS = "";
+
+#define API_KEY "YOUR_FIREBASE_API_KEY"
+#define DATABASE_URL "YOUR_FIREBASE_DB_URL"
+
+#define USER_ID "THE_USER_ID_FOR_THIS_FARM"
+#define FARM_ID "THE_FARM_ID_FOR_THIS_DEVICE"
+#define MOTOR_ID "THE_MOTOR_ID_FOR_THIS_DEVICE"
+
+// --- HARDWARE PINS ---
+#define RELAY_PIN 23
+
+// --- FIREBASE OBJECTS ---
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+void streamCallback(StreamData data) {
+  Serial.println("Stream data received!");
+  if (data.dataType() == "string" && data.dataPath().endsWith("/status")) {
+    String newStatus = data.stringData();
+    Serial.printf("New Motor Status: %s\\n", newStatus.c_str());
+
+    if (newStatus == "on") {
+      digitalWrite(RELAY_PIN, HIGH);
+      Serial.println("RELAY ON - Motor Started");
+    } else {
+      digitalWrite(RELAY_PIN, LOW);
+      Serial.println("RELAY OFF - Motor Stopped");
+    }
   }
-  // The magic happens in the streamCallback function!
+}
+
+void streamTimeoutCallback(bool timeout) {
+  if (timeout) Serial.println("Stream timeout, restarting stream...");
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW); // Ensure motor is off on startup
+  Serial.println("--- AgriGate Motor Controller ---");
+
+  // --- CONNECT TO GSM (ADAPT FOR YOUR MODULE) ---
+  Serial.println("Initializing GSM module...");
+  // Your specific GSM module init code here (e.g., for SIM800, SIM7600)
+  Serial.println("GSM Connected.");
+
+  // --- CONFIGURE FIREBASE ---
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+  auth.user.email = "device@example.com";
+  auth.user.password = "a_secure_password_for_device";
+  config.token_status_callback = tokenStatusCallback;
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+
+  // --- START LISTENING TO FIRESTORE ---
+  String path = "users/" + String(USER_ID) + "/farms/" + String(FARM_ID) + "/motors/" + String(MOTOR_ID);
+  if (!Firebase.Firestore.beginStream(&fbdo, path.c_str())) {
+    Serial.printf("Stream begin error: %s\\n", fbdo.errorReason().c_str());
+    return;
+  }
+  Firebase.Firestore.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
+  Serial.printf("Listening for changes at: %s\\n", path.c_str());
+}
+
+void loop() {
+  // Firebase library requires this call to process events.
+  // The logic is handled in the streamCallback.
   delay(1000);
 }
   `;
@@ -131,7 +183,7 @@ void loop() {
           Hardware Integration Guide
         </h1>
         <p className="text-muted-foreground mt-2">
-          How to connect an ESP32 with a GSM module to control your gate valves.
+          How to connect an ESP32 with a GSM module to control your farm devices.
         </p>
       </div>
 
@@ -161,15 +213,15 @@ void loop() {
               </div>
                <Waypoints className="h-5 w-5 text-muted-foreground rotate-90 sm:rotate-0" />
               <div className="flex items-center gap-3">
-                  <p className="font-semibold">Solenoid Valve</p>
+                  <p className="font-semibold">Relay & Device</p>
               </div>
           </div>
           <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>You toggle a valve in the **AgriGate Manager App**.</li>
-            <li>The app updates the valve's status in the **Firebase Firestore** database.</li>
-            <li>The **ESP32**, connected via the **GSM Module**, is listening for changes to that specific valve in Firestore.</li>
+            <li>You toggle a device in the **AgriGate Manager App**.</li>
+            <li>The app updates the device's status in the **Firebase Firestore** database.</li>
+            <li>The **ESP32**, connected via the **GSM Module**, is listening for changes to that specific device in Firestore.</li>
             <li>When the change is detected, the ESP32 sends a signal to a **Relay Module**.</li>
-            <li>The Relay Module opens or closes the circuit for the **Solenoid Valve**, controlling the water flow.</li>
+            <li>The Relay Module opens or closes the circuit for the **Solenoid Valve** or **Motor**.</li>
           </ol>
         </CardContent>
       </Card>
@@ -181,17 +233,34 @@ void loop() {
             ESP32 Sample Code (Arduino C++)
           </CardTitle>
           <CardDescription>
-            This is a starting point for your device's firmware. You'll need the Mobizt Firebase-ESP-Client library and to adapt the GSM connection logic for your specific module. Before uploading, you must fill in your `USER_ID`, `FARM_ID`, and `VALVE_ID`.
+            Use the correct code for your device type. You'll need the Mobizt Firebase-ESP-Client library and to adapt the GSM connection logic for your specific module. Before uploading, you must fill in your API key, database URL, and device-specific IDs.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
-            <code>
-              {arduinoCode.trim()}
-            </code>
-          </pre>
+          <Tabs defaultValue="valve">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="valve">Valve Controller</TabsTrigger>
+              <TabsTrigger value="motor">Motor Controller</TabsTrigger>
+            </TabsList>
+            <TabsContent value="valve" className="mt-4">
+              <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+                <code>
+                  {valveControllerCode.trim()}
+                </code>
+              </pre>
+            </TabsContent>
+            <TabsContent value="motor" className="mt-4">
+              <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+                <code>
+                  {motorControllerCode.trim()}
+                </code>
+              </pre>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

@@ -1,21 +1,27 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Libraries } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { MapPin, AlertTriangle, Loader2, Save } from 'lucide-react';
-import { GeoPoint } from 'firebase/firestore';
-import { type GateValve } from '@/lib/data';
+import { MapPin, AlertTriangle, Loader2, Save, Tractor, Windmill } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface Device {
+  type: 'valve' | 'motor';
+  name: string;
+  position: { lat: number, lng: number };
+}
 
 interface MapPickerProps {
-  valves: Omit<GateValve, 'id' | 'status'>[];
+  devices: Device[];
   totalValves: number;
-  onFinalSubmit: (valves: Omit<GateValve, 'id' | 'status'>[]) => void;
+  totalMotors: number;
+  onFinalSubmit: (devices: Device[]) => void;
   isSubmitting: boolean;
   initialCenter?: { lat: number; lng: number };
 }
@@ -23,83 +29,91 @@ interface MapPickerProps {
 const libraries: Libraries = ['places'];
 
 export default function MapPicker({
-  valves: initialValves,
+  devices: initialDevices,
   totalValves,
+  totalMotors,
   onFinalSubmit,
   isSubmitting,
-  initialCenter = { lat: 11.1271, lng: 78.6569 }, // Default to Tamil Nadu, India
+  initialCenter = { lat: 11.1271, lng: 78.6569 },
 }: MapPickerProps) {
   const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
-  const [valves, setValves] = useState(initialValves);
-  const [selectedValveIndex, setSelectedValveIndex] = useState<number | null>(null);
+  const [devices, setDevices] = useState(initialDevices);
+  const [selectedDeviceIndex, setSelectedDeviceIndex] = useState<number | null>(null);
+  const [placementMode, setPlacementMode] = useState<'valve' | 'motor'>('valve');
   const { toast } = useToast();
   
-  const [mapCenter, setMapCenter] = useState(initialCenter);
-  const [zoomLevel, setZoomLevel] = useState(10);
+  const [mapCenter] = useState(initialCenter);
+  const [zoomLevel] = useState(10);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
     libraries,
   });
-
-  // Effect to reset valves if the total count changes (e.g., user goes back and changes it)
-  useEffect(() => {
-    setValves([]);
-  }, [totalValves]);
+  
+  const placedValves = devices.filter(d => d.type === 'valve').length;
+  const placedMotors = devices.filter(d => d.type === 'motor').length;
 
   const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
-    if (valves.length >= totalValves) {
-      toast({
-        variant: "destructive",
-        title: "All valves placed",
-        description: `You have already placed all ${totalValves} valves.`,
-      });
-      return;
+    let limitReached = false;
+    let newDeviceName = '';
+    
+    if (placementMode === 'valve') {
+        if (placedValves >= totalValves) {
+            limitReached = true;
+            toast({ variant: "destructive", title: "All valves placed", description: `You have already placed all ${totalValves} valves.` });
+        } else {
+            newDeviceName = `Valve ${placedValves + 1}`;
+        }
+    } else { // motor
+        if (placedMotors >= totalMotors) {
+            limitReached = true;
+            toast({ variant: "destructive", title: "All motors placed", description: `You have already placed all ${totalMotors} motors.` });
+        } else {
+            newDeviceName = `Motor ${placedMotors + 1}`;
+        }
     }
+
+    if (limitReached) return;
+
     if (event.latLng) {
-      const newValve = {
-        name: `Valve ${valves.length + 1}`,
+      const newDevice: Device = {
+        type: placementMode,
+        name: newDeviceName,
         position: {
           lat: event.latLng.lat(),
           lng: event.latLng.lng(),
         },
       };
-      setValves(currentValves => [...currentValves, newValve]);
+      setDevices(currentDevices => [...currentDevices, newDevice]);
     }
-  }, [valves.length, totalValves, toast]);
+  }, [placementMode, placedValves, placedMotors, totalValves, totalMotors, toast]);
 
-  const handleValveNameChange = (newName: string) => {
-    if (selectedValveIndex !== null) {
-      const updatedValves = [...valves];
-      updatedValves[selectedValveIndex].name = newName;
-      setValves(updatedValves);
+  const handleDeviceNameChange = (newName: string) => {
+    if (selectedDeviceIndex !== null) {
+      const updatedDevices = [...devices];
+      updatedDevices[selectedDeviceIndex].name = newName;
+      setDevices(updatedDevices);
     }
   };
 
-  const handleRemoveValve = () => {
-    if (selectedValveIndex !== null) {
-      const updatedValves = valves.filter((_, index) => index !== selectedValveIndex);
-      // Re-label subsequent valves
-      for(let i = selectedValveIndex; i < updatedValves.length; i++) {
-          if (updatedValves[i].name.startsWith('Valve ')) {
-              updatedValves[i].name = `Valve ${i+1}`;
-          }
-      }
-      setValves(updatedValves);
-      setSelectedValveIndex(null);
+  const handleRemoveDevice = () => {
+    if (selectedDeviceIndex !== null) {
+      const updatedDevices = devices.filter((_, index) => index !== selectedDeviceIndex);
+      setDevices(updatedDevices);
+      setSelectedDeviceIndex(null);
     }
   };
 
   const handleSubmit = () => {
-    if (valves.length < totalValves) {
+    if (placedValves < totalValves || placedMotors < totalMotors) {
       toast({
         variant: 'destructive',
-        title: 'Valve Placement Incomplete',
-        description: `Please place all ${totalValves} valves on the map.`,
+        title: 'Device Placement Incomplete',
+        description: `Please place all ${totalValves} valves and ${totalMotors} motors on the map.`,
       });
       return;
     }
-    onFinalSubmit(valves);
+    onFinalSubmit(devices);
   };
 
   const mapOptions = useMemo<google.maps.MapOptions>(() => ({
@@ -132,34 +146,40 @@ export default function MapPicker({
         mapContainerClassName="w-full h-full"
         center={mapCenter}
         zoom={zoomLevel}
-        onCenterChanged={() => {}} // Placeholder to attach map instance
-        onZoomChanged={() => {}} // Placeholder to attach map instance
         options={mapOptions}
         onClick={handleMapClick}
       >
-        {valves.map((valve, index) => (
+        {devices.map((device, index) => (
           <Marker
             key={index}
-            position={valve.position}
+            position={device.position}
             label={(index + 1).toString()}
-            onClick={() => setSelectedValveIndex(index)}
+            icon={{
+              path: device.type === 'valve' ? window.google.maps.SymbolPath.CIRCLE : window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: device.type === 'valve' ? 8 : 6,
+              fillColor: device.type === 'valve' ? '#4ade80' : '#facc15', // green for valve, yellow for motor
+              fillOpacity: 1,
+              strokeWeight: 1,
+              rotation: device.type === 'motor' ? Math.random() * 360 : 0
+            }}
+            onClick={() => setSelectedDeviceIndex(index)}
           />
         ))}
 
-        {selectedValveIndex !== null && valves[selectedValveIndex] && (
+        {selectedDeviceIndex !== null && devices[selectedDeviceIndex] && (
           <InfoWindow
-            position={valves[selectedValveIndex].position}
-            onCloseClick={() => setSelectedValveIndex(null)}
+            position={devices[selectedDeviceIndex].position}
+            onCloseClick={() => setSelectedDeviceIndex(null)}
           >
             <div className="space-y-3 p-2">
-              <h3 className="font-bold">{valves[selectedValveIndex].name}</h3>
-              <p className="text-xs text-muted-foreground">You can rename this valve below.</p>
+              <h3 className="font-bold">{devices[selectedDeviceIndex].name}</h3>
+              <p className="text-xs text-muted-foreground">You can rename this device below.</p>
               <Input
-                value={valves[selectedValveIndex].name}
-                onChange={(e) => handleValveNameChange(e.target.value)}
-                placeholder="Valve name"
+                value={devices[selectedDeviceIndex].name}
+                onChange={(e) => handleDeviceNameChange(e.target.value)}
+                placeholder="Device name"
               />
-              <Button variant="destructive" size="sm" onClick={handleRemoveValve} className="w-full">
+              <Button variant="destructive" size="sm" onClick={handleRemoveDevice} className="w-full">
                 Remove
               </Button>
             </div>
@@ -167,12 +187,22 @@ export default function MapPicker({
         )}
       </GoogleMap>
       
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex items-center gap-2 bg-background p-2 px-4 rounded-lg border shadow-lg text-sm">
-            <MapPin className="h-5 w-5 text-primary" />
-            <p className="font-semibold">Click on the map to place a valve. Placed: {valves.length} / {totalValves}</p>
-        </div>
+       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-background p-2 rounded-lg border shadow-lg text-sm">
+        <Tabs defaultValue="valve" onValueChange={(value) => setPlacementMode(value as 'valve' | 'motor')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="valve" disabled={totalValves === 0}>
+                <Tractor className="h-4 w-4 mr-2" />
+                Valves ({placedValves}/{totalValves})
+            </TabsTrigger>
+            <TabsTrigger value="motor" disabled={totalMotors === 0}>
+                <Windmill className="h-4 w-4 mr-2" />
+                Motors ({placedMotors}/{totalMotors})
+            </TabsTrigger>
+          </TabsList>
+           <p className="text-xs text-center mt-2 text-muted-foreground">Click on the map to place a {placementMode}.</p>
+        </Tabs>
       </div>
+
        <div className="absolute bottom-4 right-4 z-10">
            <Button onClick={handleSubmit} disabled={isSubmitting} size="lg">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -182,3 +212,5 @@ export default function MapPicker({
     </div>
   );
 }
+
+    

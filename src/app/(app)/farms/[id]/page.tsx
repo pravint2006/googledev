@@ -5,6 +5,7 @@ import { useFarmStore } from '@/hooks/use-farm-store';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GateValveStatus from '@/components/gate-valve-status';
+import MotorStatus from '@/components/motor-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Tractor, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -18,7 +19,7 @@ export default function FarmDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === 'string' ? params.id : '';
-  const { getFarmById, toggleValveStatus, deleteFarm, isLoading } = useFarmStore();
+  const { getFarmById, toggleValveStatus, toggleMotorStatus, deleteFarm, isLoading } = useFarmStore();
   const farm = getFarmById(id);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -60,7 +61,7 @@ export default function FarmDetailPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">{farm.name}</h1>
-            <p className="text-muted-foreground">Monitor and control your gate valves in real-time.</p>
+            <p className="text-muted-foreground">Monitor and control your devices in real-time.</p>
           </div>
           <div className='flex items-center gap-2'>
             <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
@@ -88,7 +89,7 @@ export default function FarmDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
-                    <FarmMap valves={farm.gateValves} center={farm.location} />
+                    <FarmMap devices={[...farm.gateValves.map(v => ({...v, type: 'valve' as const})), ...farm.motors.map(m => ({...m, type: 'motor' as const}))]} center={farm.location} />
                 </div>
               </CardContent>
             </Card>
@@ -123,6 +124,32 @@ export default function FarmDetailPage() {
                 )}
               </CardContent>
             </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className='font-headline'>Motor Control</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {farm.motors.length > 0 ? (
+                  farm.motors.map(motor => (
+                    <MotorStatus
+                      key={motor.id}
+                      motor={motor}
+                      onToggle={() => toggleMotorStatus(farm.id, motor.id)}
+                    />
+                  ))
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No Motors</AlertTitle>
+                    <AlertDescription>
+                      This farm has no motors configured.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
           </div>
         </div>
       </div>
@@ -164,8 +191,18 @@ function FarmDetailLoadingSkeleton() {
               <Skeleton className="h-16 w-full" />
             </CardContent>
           </Card>
+           <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
 }
+
+    

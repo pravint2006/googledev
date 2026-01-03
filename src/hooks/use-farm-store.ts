@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { type Farm, type GateValve } from '@/lib/data';
+import { type Farm, type Motor } from '@/lib/data';
 import { useToast } from './use-toast';
 import {
   useUser,
@@ -60,13 +60,11 @@ export function useFarmStore() {
     
     setIsSubmitting(true);
     try {
-      // 1. Generate a new document reference with a unique ID
       const newFarmRef = doc(farmsCollection);
       
-      // 2. Use setDoc to create the document with the ID included from the start
       await setDoc(newFarmRef, {
         ...farmData,
-        id: newFarmRef.id, // Add the auto-generated ID to the document data
+        id: newFarmRef.id,
         ownerId: user.uid,
       });
 
@@ -121,7 +119,6 @@ export function useFarmStore() {
 
     if (!targetValve) return;
 
-    // Prevent closing the last open valve
     if (openValvesCount <= 1 && targetValve.status === 'open') {
       toast({
         variant: 'destructive',
@@ -164,6 +161,43 @@ export function useFarmStore() {
         setIsSubmitting(false);
     }
   };
+
+  const toggleMotorStatus = async (farmId: string, motorId: string) => {
+    if (!user || !firestore) return;
+
+    const farm = farms?.find((f) => f.id === farmId);
+    if (!farm) return;
+
+    setIsSubmitting(true);
+    try {
+      let toggledMotorName = '';
+      const updatedMotors = farm.motors.map((motor) => {
+        if (motor.id === motorId) {
+          toggledMotorName = motor.name;
+          return { ...motor, status: motor.status === 'on' ? 'off' : 'on' };
+        }
+        return motor;
+      });
+
+      const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+      await updateDoc(farmRef, { motors: updatedMotors });
+
+      if (toggledMotorName) {
+        toast({
+          title: 'Motor status changed',
+          description: `Motor "${toggledMotorName}" has been turned ${updatedMotors.find(m => m.id === motorId)?.status}.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error Updating Motor',
+        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   const isLoading = userLoading || farmsLoading;
 
@@ -175,5 +209,8 @@ export function useFarmStore() {
     deleteFarm,
     getFarmById,
     toggleValveStatus,
+    toggleMotorStatus,
   };
 }
+
+    

@@ -4,15 +4,14 @@
  *
  * Core Philosophy:
  * The security model is built on the principle that users own and have exclusive
- * control over their data. All data, including farms and their associated gate valves,
+ * control over their data. All data, including farms, gate valves, and motors,
  * is private and can only be accessed by the authenticated user who created it.
  * There is no concept of public data or shared access in this ruleset.
  *
  * Data Structure:
  * All data is hierarchically nested under a user-specific path: `/users/{userId}`.
  * A user's profile is at `/users/{userId}`. Their farms are in a subcollection
- * at `/users/{userId}/farms/{farmId}`, and the gate valves for a specific farm are
- * further nested at `/users/{userId}/farms/{farmId}/gateValves/{gateValveId}`.
+ * at `/users/{userId}/farms/{farmId}`, and devices for that farm are further nested.
  * This structure makes ownership clear and allows for efficient, path-based security.
  *
  * Key Security Decisions:
@@ -34,46 +33,21 @@ service cloud.firestore {
     // Helper Functions
     // -------------------------------------------------------------------------
 
-    /**
-     * Checks if a user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the primary function for enforcing data ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    /**
-     * Checks for ownership on an existing document. Used for safe updates/deletes.
-     * Denies requests that target non-existent documents.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/farms/$(resource.id));
-    }
-
-    /**
-     * Validates the integrity of a User document on creation.
-     * Ensures the document's internal ID matches the document path ID.
-     */
+    
     function isValidNewUser(userId) {
-      // On create, lastWeatherLocation should not be present.
-      let hasNoExtraFields = !('lastWeatherLocation' in request.resource.data);
+      let hasNoExtraFields = !('lastWeatherLocation' in request.resource.data) && !('farmDetails' in request.resource.data);
       return request.resource.data.id == userId && hasNoExtraFields;
     }
 
-    /**
-     * Validates the immutability of critical fields on a User document update.
-     * Prevents the user's unique ID from being changed after creation.
-     */
     function hasImmutableUserFields() {
-      // Allow updates only to 'lastWeatherLocation'. Other fields are immutable.
-      let allowedKeys = ['id', 'email', 'firstName', 'lastName', 'lastWeatherLocation'];
+      let allowedKeys = ['id', 'email', 'firstName', 'lastName', 'lastWeatherLocation', 'farmDetails'];
       let incomingKeys = request.resource.data.keys();
       
       return request.resource.data.id == resource.data.id
@@ -83,19 +57,11 @@ service cloud.firestore {
         && incomingKeys.hasAll(allowedKeys) && allowedKeys.hasAll(incomingKeys);
     }
 
-    /**
-     * Validates the integrity of a Farm document on creation.
-     * Ensures the document's internal ownerId matches the user path ID.
-     */
     function isValidNewFarm(userId, farmId) {
       let data = request.resource.data;
       return data.ownerId == userId && data.id == farmId;
     }
 
-    /**
-     * Validates the immutability of critical fields on a Farm document update.
-     * Prevents ownership and ID fields from being changed.
-     */
     function hasImmutableFarmFields() {
       let incomingData = request.resource.data;
       let existingData = resource.data;
@@ -104,24 +70,26 @@ service cloud.firestore {
           && incomingData.id == existingData.id;
     }
 
-    /**
-     * Validates the integrity of a GateValve document on creation.
-     * Ensures the document's internal IDs match the document path IDs.
-     */
     function isValidNewGateValve(farmId, gateValveId) {
       let data = request.resource.data;
       return data.farmId == farmId
           && data.id == gateValveId;
     }
 
-    /**
-     * Validates the immutability of critical fields on a GateValve document update.
-     * Prevents ownership and ID fields from being changed.
-     */
     function hasImmutableGateValveFields() {
       let data = request.resource.data;
       return data.farmId == resource.data.farmId
           && data.id == resource.data.id;
+    }
+
+    function isValidNewMotor(farmId, motorId) {
+      let data = request.resource.data;
+      return data.farmId == farmId && data.id == motorId;
+    }
+
+    function hasImmutableMotorFields() {
+      let data = request.resource.data;
+      return data.farmId == resource.data.farmId && data.id == resource.data.id;
     }
 
 
@@ -129,53 +97,32 @@ service cloud.firestore {
     // Collection Rules
     // -------------------------------------------------------------------------
 
-    /**
-     * @description Users can create, read, update, and delete their own profile.
-     * @path /users/{userId}
-     * @allow (create) An authenticated user creates their own profile: `create /users/user_abc` with auth.uid=`user_abc`.
-     * @deny (list) An authenticated user tries to list all user profiles: `list /users`.
-     * @deny (get) A user tries to read another user's profile: `get /users/user_xyz` with auth.uid=`user_abc`.
-     * @principle Enforces self-creation and ownership, while preventing user enumeration.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId); // Simplified for initial profile creation via signup
+      allow create: if isOwner(userId) && isValidNewUser(userId);
       allow update: if isOwner(userId) && hasImmutableUserFields();
       allow delete: if isOwner(userId);
 
-      /**
-       * @description A user can manage the farms associated with their account.
-       * @path /users/{userId}/farms/{farmId}
-       * @allow (create) A user creates a new farm under their own profile: `create /users/user_abc/farms/farm_123` with auth.uid=`user_abc`.
-       * @allow (list) An authenticated user can list all of their own farms.
-       * @deny (get) A user tries to read another user's farm data: `get /users/user_xyz/farms/farm_456` with auth.uid=`user_abc`.
-       * @deny (create) A user creates a farm with an incorrect internal ownerId: `create /users/user_abc/farms/farm_123` with data `{ ownerId: 'user_xyz' }`.
-       * @principle Restricts access to a user's own data tree using path-based ownership.
-       */
       match /farms/{farmId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
+        allow get, list, delete: if isOwner(userId);
         allow create: if isOwner(userId) && isValidNewFarm(userId, farmId);
         allow update: if isOwner(userId) && hasImmutableFarmFields();
-        allow delete: if isOwner(userId);
-
-        /**
-         * @description A user can manage the gate valves within one of their own farms.
-         * @path /users/{userId}/farms/{farmId}/gateValves/{gateValveId}
-         * @allow (list) A user lists all gate valves for their own farm: `list /users/user_abc/farms/farm_123/gateValves` with auth.uid=`user_abc`.
-         * @deny (get) A user tries to read a gate valve from another user's farm: `get /users/user_xyz/farms/farm_456/gateValves/gv_789` with auth.uid=`user_abc`.
-         * @deny (create) A user creates a gate valve with a mismatched internal farmId: `create .../gateValves/gv_789` with data `{ farmId: 'farm_other' }`.
-         * @principle Enforces deep, path-based ownership and validates relational integrity.
-         */
+        
         match /gateValves/{gateValveId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
+          allow get, list, delete: if isOwner(userId);
           allow create: if isOwner(userId) && isValidNewGateValve(farmId, gateValveId);
           allow update: if isOwner(userId) && hasImmutableGateValveFields();
-          allow delete: if isOwner(userId);
+        }
+
+        match /motors/{motorId} {
+          allow get, list, delete: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidNewMotor(farmId, motorId);
+          allow update: if isOwner(userId) && hasImmutableMotorFields();
         }
       }
     }
   }
 }
+
+    

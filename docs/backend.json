@@ -29,6 +29,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "motorIds": {
+          "type": "array",
+          "description": "References to Motors. (Relationship: Farm 1:N Motor)",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -63,6 +70,41 @@
         "status": {
           "type": "string",
           "description": "The current status of the gate valve (e.g., open, closed, error)."
+        }
+      },
+      "required": [
+        "id",
+        "farmId",
+        "name",
+        "location",
+        "status"
+      ]
+    },
+    "Motor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Motor",
+      "type": "object",
+      "description": "Represents a motor within a farm (e.g., for a water pump).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Motor entity."
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to Farm. (Relationship: Farm 1:N Motor)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the motor."
+        },
+        "location": {
+          "type": "string",
+          "description": "Geospatial coordinates of the motor (e.g., GeoJSON)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the motor (e.g., on, off, error)."
         }
       },
       "required": [
@@ -183,8 +225,34 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/farms/{farmId}/motors/{motorId}",
+        "definition": {
+          "entityName": "Motor",
+          "schema": {
+            "$ref": "#/backend/entities/Motor"
+          },
+          "description": "Stores motor data. Path-based ownership ensures only the user can access the motor data within their farms.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "farmId",
+              "description": "The unique identifier of the farm."
+            },
+            {
+              "name": "motorId",
+              "description": "The unique identifier of the motor."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore data structure is designed to ensure secure and scalable management of farm and gate valve data, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure leverages path-based ownership for user-specific data and avoids hierarchical authorization dependencies by denormalizing the `userId` into the `farms` and `gateValves` collections, making security rules simpler and more robust.\n\nThe `users/{userId}` collection stores user profiles. Each user owns their `farms` and `gateValves` through path-based ownership. The `farms/{farmId}` collection stores farm-specific data. Similarly, `farms/{farmId}/gateValves/{gateValveId}` stores gate valve data, ensuring a clear hierarchy. This structure supports QAPs because listing farms and gate valves is secured by path-based rules that check `request.auth.uid` against the `userId` or `farmId`.\n\nThe denormalization of `userId` (implicit in path structure) into all gate valve document enables authorization independence. Rules can validate ownership solely based on the path and the authenticated user's ID without needing `get()` calls to parent documents."
   }
 }
+
+    

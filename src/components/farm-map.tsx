@@ -6,17 +6,19 @@ import { GoogleMap, useJsApiLoader, Marker, Libraries } from '@react-google-maps
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import { type GateValve } from '@/lib/data';
+import { type GateValve, type Motor } from '@/lib/data';
 import { GeoPoint } from 'firebase/firestore';
 
+type Device = (GateValve & { type: 'valve' }) | (Motor & { type: 'motor' });
+
 interface FarmMapProps {
-  valves: GateValve[];
+  devices: Device[];
   center: GeoPoint;
 }
 
 const libraries: Libraries = ['places'];
 
-export default function FarmMap({ valves, center }: FarmMapProps) {
+export default function FarmMap({ devices, center }: FarmMapProps) {
   const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -60,14 +62,24 @@ export default function FarmMap({ valves, center }: FarmMapProps) {
         zoom={15}
         options={mapOptions}
     >
-        {valves.map((valve, index) => (
+        {devices.map((device, index) => (
           <Marker
-            key={valve.id}
-            position={valve.position}
+            key={device.id}
+            position={device.position}
             label={(index + 1).toString()}
-            title={valve.name}
+            title={device.name}
+            icon={{
+              path: device.type === 'valve' ? window.google.maps.SymbolPath.CIRCLE : window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: device.type === 'valve' ? 8 : 6,
+              fillColor: device.type === 'valve' ? '#4ade80' : '#facc15', // green for valve, yellow for motor
+              fillOpacity: 1,
+              strokeWeight: 1,
+              rotation: device.type === 'motor' ? Math.random() * 360 : 0
+            }}
           />
         ))}
     </GoogleMap>
   );
 }
+
+    

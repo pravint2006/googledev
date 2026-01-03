@@ -8,11 +8,20 @@ export type GateValve = {
   position: { lat: number; lng: number };
 };
 
+export type Motor = {
+  id: string;
+  name: string;
+  status: 'on' | 'off';
+  position: { lat: number; lng: number };
+};
+
 export type Farm = {
   id: string;
   name: string;
   gateValves: GateValve[];
-  // mapImageUrl and mapImageHint are no longer needed with an interactive map
+  motors: Motor[];
   ownerId: string;
   location: GeoPoint;
 };
+
+    
