@@ -5,21 +5,19 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { format, parseISO, isToday } from 'date-fns';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { getWeather } from '@/ai/flows/weather-flow';
-import { WeatherOutput } from '@/ai/flows/weather-types';
+import { type WeatherOutput } from '@/ai/flows/weather-types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Droplet, Wind, Thermometer, MapPin, Search } from 'lucide-react';
+import { Loader2, Droplet, Wind, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WeatherIcon } from './weather-icons';
 import { HourlyWeatherChart } from './hourly-weather-chart';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { WindChart } from './wind-chart';
-import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { type WeatherLocation } from '@/hooks/use-user-profile';
-
+import { useWeatherStore } from '@/hooks/use-weather-store';
 
 function WeatherSkeleton() {
   return (
@@ -42,7 +40,8 @@ const weatherDescription = (code: number): string => {
         66: 'Light freezing rain', 67: 'Heavy freezing rain',
         71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
         77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
-        82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
+        82: 'Violent rain showers',
+        85: 'Slight snow showers', 86: 'Heavy snow showers',
         95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
     };
     return descriptions[code] || 'Unknown';
@@ -51,9 +50,7 @@ const weatherDescription = (code: number): string => {
 
 export default function WeatherWidget() {
   const { userProfile, updateUserProfile } = useUserProfile();
-  const [weatherData, setWeatherData] = useState<WeatherOutput | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { weatherData, loading, error, fetchWeather, clearError } = useWeatherStore();
   const [citySearch, setCitySearch] = useState('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -92,35 +89,6 @@ export default function WeatherWidget() {
     };
   }, [selectedDayIndex, weatherData]);
 
-  const fetchWeather = async (params: { latitude?: number; longitude?: number; city?: string } = {}) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getWeather(params);
-      setWeatherData(data);
-       if (data) {
-        // Construct a location object, filtering out any undefined values
-        // to prevent Firestore errors.
-        const locationToSave: WeatherLocation = {
-          latitude: data.latitude,
-          longitude: data.longitude,
-          city: data.locationName,
-        };
-        if (data.fullLocationName) {
-          locationToSave.location = data.fullLocationName;
-        }
-        if (data.pincode) {
-          locationToSave.pincode = data.pincode;
-        }
-        updateUserProfile({ lastWeatherLocation: locationToSave });
-      }
-    } catch (e: any) {
-      setError(e.message || 'Could not load weather data.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     // 1. Try fetching with last known location from user profile
     if (userProfile?.lastWeatherLocation) {
@@ -150,12 +118,14 @@ export default function WeatherWidget() {
             { timeout: 10000 }
         );
     }
-  }, [userProfile]);
+  }, [userProfile, fetchWeather]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (citySearch.trim()) {
-      fetchWeather({ city: citySearch.trim() });
+      const locationData = { city: citySearch.trim() };
+      fetchWeather(locationData);
+      updateUserProfile({ lastWeatherLocation: locationData });
     }
   };
 
@@ -167,17 +137,19 @@ export default function WeatherWidget() {
     if (autocompleteRef.current) {
         const place = autocompleteRef.current.getPlace();
         
+        let locationData;
         if (place.geometry?.location) {
             const lat = place.geometry.location.lat();
             const lng = place.geometry.location.lng();
-            const city = place.name;
-            setCitySearch(city);
-            // Fetch weather using precise coordinates instead of just the name
-            fetchWeather({ latitude: lat, longitude: lng });
+            locationData = { city: place.name, latitude: lat, longitude: lng };
         } else if (place.name) {
-            // Fallback to name search if geometry is not available
-            setCitySearch(place.name);
-            fetchWeather({ city: place.name });
+            locationData = { city: place.name };
+        }
+
+        if(locationData) {
+            setCitySearch(locationData.city!);
+            fetchWeather(locationData);
+            updateUserProfile({ lastWeatherLocation: locationData });
         }
     }
   };
@@ -246,7 +218,6 @@ export default function WeatherWidget() {
     );
   };
   
-  // Conditional returns now happen after all hooks have been called.
   if (loading) {
     return <WeatherSkeleton />;
   }
@@ -286,10 +257,10 @@ export default function WeatherWidget() {
         
         <div className="flex justify-between items-start gap-4">
             <div>
-                <p className="flex items-center gap-2 text-lg"><MapPin size={16} />{locationName}</p>
+                <p className="flex items-center gap-2 text-lg">{locationName}</p>
                  {(fullLocationName || pincode) && (
-                    <p className="text-xs text-primary-foreground/70 ml-6 truncate max-w-md" title={displayLocation}>
-                        {displayLocation.split(',').slice(1).join(',').trim()}
+                    <p className="text-xs text-primary-foreground/70 ml-1 truncate max-w-md" title={displayLocation}>
+                        {displayLocation}
                     </p>
                 )}
             </div>
@@ -353,5 +324,3 @@ export default function WeatherWidget() {
     </Card>
   );
 }
-
-    
