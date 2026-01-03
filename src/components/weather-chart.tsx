@@ -57,14 +57,13 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
                         return null; // Hide tick if it's not on the 3-hour mark
                       }
                       return (
-                        <g transform={`translate(${x},${y})`}>
-                          <text x={0} y={0} dy={16} textAnchor="middle" fill="#FFFFFF" fontSize={12}>
+                        <g transform={`translate(${x},${y + 10})`}>
+                          <text x={0} y={0} textAnchor="middle" fill="#FFFFFF" fontSize={12} opacity={1}>
                             {format(date, 'ha')}
                           </text>
                         </g>
                       );
                     }}
-                    dy={10}
                 />
                  <Tooltip
                     contentStyle={{
@@ -89,3 +88,4 @@ export function HourlyWeatherChart({ data, unit, color }: HourlyWeatherChartProp
     </div>
   );
 }
+
