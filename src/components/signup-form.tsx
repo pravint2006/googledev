@@ -73,31 +73,33 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         password
       );
 
-      if (userCredential.user) {
-        const user = userCredential.user;
-        const [firstName, ...lastNameParts] = displayName.split(' ');
-        const lastName = lastNameParts.join(' ');
-        
-        await updateProfile(user, {
-          displayName: displayName,
-        });
+      const user = userCredential.user;
+      
+      // Update the user's profile in Firebase Auth
+      await updateProfile(user, {
+        displayName: displayName,
+      });
 
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, {
-          id: user.uid,
-          email: user.email,
-          firstName: firstName || '',
-          lastName: lastName || '',
-        });
-        
-        await sendEmailVerification(user);
-      }
+      // Create the user's document in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const [firstName, ...lastNameParts] = displayName.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      await setDoc(userDocRef, {
+        id: user.uid,
+        email: user.email,
+        firstName: firstName || '',
+        lastName: lastName || '',
+      });
+      
+      // Send verification email
+      await sendEmailVerification(user);
       
       toast({
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",
       });
-      // No navigation here. The FirebaseProvider will handle it.
+      // The FirebaseProvider will handle the redirect.
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -105,17 +107,14 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         switch (authError.code) {
           case 'auth/email-already-in-use':
             errorMessage =
-              'This email is already in use. Please try another one.';
+              'This email is already in use. Please log in or use another email.';
             break;
           case 'auth/invalid-email':
             errorMessage = 'Please enter a valid email address.';
             break;
           case 'auth/weak-password':
-            errorMessage = 'The password is too weak. Please use a stronger one.';
+            errorMessage = 'The password is too weak. It must be at least 6 characters long.';
             break;
-          case 'auth/operation-not-allowed':
-             errorMessage = 'Email/Password sign up is not enabled.';
-             break;
           default:
             errorMessage = authError.message || 'Failed to sign up. Please try again later.';
             break;
