@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 
 function WeatherSkeleton() {
   return (
-    <Card className="bg-primary/90 text-primary-foreground border-primary p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
+    <Card className="bg-primary text-primary-foreground border-primary p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
         <Loader2 className="h-10 w-10 animate-spin" />
         <p className="mt-4">Fetching weather data...</p>
     </Card>
@@ -29,6 +29,23 @@ function WeatherSkeleton() {
 }
 
 const libraries: ('places')[] = ['places'];
+
+const weatherDescription = (code: number): string => {
+    const descriptions: { [key: number]: string } = {
+        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Depositing rime fog',
+        51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+        56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
+        61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
+        66: 'Light freezing rain', 67: 'Heavy freezing rain',
+        71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
+        77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
+        82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
+        95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
+    };
+    return descriptions[code] || 'Unknown';
+};
+
 
 export default function WeatherWidget() {
   const { userProfile, updateUserProfile } = useUserProfile();
@@ -44,21 +61,34 @@ export default function WeatherWidget() {
     libraries,
   });
 
-  const weatherDescription = (code: number): string => {
-    const descriptions: { [key: number]: string } = {
-        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-        45: 'Fog', 48: 'Depositing rime fog',
-        51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
-        56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
-        61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
-        66: 'Light freezing rain', 67: 'Heavy freezing rain',
-        71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
-        77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
-        82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
-        95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
+  const displayData = useMemo(() => {
+    if (!weatherData) return null;
+    const { current, daily } = weatherData;
+
+    if (selectedDayIndex === 0 && isToday(parseISO(daily.time[0]))) {
+      return {
+        temp: current.temperature,
+        weatherCode: current.weatherCode,
+        isDay: current.isDay === 1,
+        description: weatherDescription(current.weatherCode),
+        humidity: current.humidity,
+        windSpeed: current.windSpeed,
+        highTemp: daily.temperatureMax[0],
+        lowTemp: daily.temperatureMin[0],
+      };
+    }
+    const selectedDaily = daily;
+    return {
+      temp: selectedDaily.temperatureMax[selectedDayIndex], // Show high temp for future days
+      weatherCode: selectedDaily.weatherCode[selectedDayIndex],
+      isDay: true, // For future days, assume day time for icon
+      description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
+      humidity: null, // Not available for future daily forecasts
+      windSpeed: null, // Not available for future daily forecasts
+      highTemp: selectedDaily.temperatureMax[selectedDayIndex],
+      lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
     };
-    return descriptions[code] || 'Unknown';
-  };
+  }, [selectedDayIndex, weatherData]);
 
   const fetchWeather = async (params: { latitude?: number; longitude?: number; city?: string } = {}) => {
     setLoading(true);
@@ -145,35 +175,6 @@ export default function WeatherWidget() {
     }
   };
   
-  const displayData = useMemo(() => {
-    if (!weatherData) return null;
-    const { current, daily } = weatherData;
-
-    if (selectedDayIndex === 0 && isToday(parseISO(daily.time[0]))) {
-      return {
-        temp: current.temperature,
-        weatherCode: current.weatherCode,
-        isDay: current.isDay === 1,
-        description: weatherDescription(current.weatherCode),
-        humidity: current.humidity,
-        windSpeed: current.windSpeed,
-        highTemp: daily.temperatureMax[0],
-        lowTemp: daily.temperatureMin[0],
-      };
-    }
-    const selectedDaily = daily;
-    return {
-      temp: selectedDaily.temperatureMax[selectedDayIndex], // Show high temp for future days
-      weatherCode: selectedDaily.weatherCode[selectedDayIndex],
-      isDay: true, // For future days, assume day time for icon
-      description: weatherDescription(selectedDaily.weatherCode[selectedDayIndex]),
-      humidity: null, // Not available for future daily forecasts
-      windSpeed: null, // Not available for future daily forecasts
-      highTemp: selectedDaily.temperatureMax[selectedDayIndex],
-      lowTemp: selectedDaily.temperatureMin[selectedDayIndex],
-    };
-  }, [selectedDayIndex, weatherData]);
-
   const hourlyDataForChart = useMemo(() => {
     if (!weatherData) return [];
     const { hourly } = weatherData;
@@ -216,7 +217,7 @@ export default function WeatherWidget() {
 
   const renderSearch = () => {
     if (!isLoaded) {
-      return <Input placeholder="Loading search..." disabled className="bg-primary/80 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full max-w-xs" />
+      return <Input placeholder="Loading search..." disabled className="bg-primary/70 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full" />
     }
     return (
         <Autocomplete
@@ -232,7 +233,7 @@ export default function WeatherWidget() {
               value={citySearch} 
               onChange={(e) => setCitySearch(e.target.value)} 
               placeholder="Search for a city in India..." 
-              className="bg-primary/80 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full"
+              className="bg-primary/70 border-primary-foreground/20 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full"
             />
         </Autocomplete>
     );
@@ -245,7 +246,7 @@ export default function WeatherWidget() {
 
   if (error) {
     return (
-        <Card className="bg-primary/90 text-primary-foreground border-destructive/50 p-6">
+        <Card className="bg-primary text-primary-foreground border-destructive/50 p-6">
              <Alert variant="destructive" className='border-0 text-white'>
                 <AlertTitle className="text-red-300">Could Not Load Weather</AlertTitle>
                 <AlertDescription className="text-red-400/90">{error}</AlertDescription>
@@ -267,11 +268,11 @@ export default function WeatherWidget() {
   const displayLocation = fullLocationName ? `${fullLocationName}${pincode ? ` - ${pincode}` : ''}` : `${locationName}${pincode ? ` - ${pincode}` : ''}`;
 
   return (
-    <Card className="relative bg-primary/90 text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-primary/20">
+    <Card className="relative bg-primary text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-primary/20">
         
-        <form onSubmit={handleSearch} className="absolute top-4 right-4 z-10 flex gap-2 w-full max-w-xs">
+        <form onSubmit={handleSearch} className="absolute top-4 right-4 z-10 flex w-full max-w-xs">
           {renderSearch()}
-          <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary">
+          <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/70">
             <Search size={16} />
           </Button>
         </form>
@@ -301,10 +302,10 @@ export default function WeatherWidget() {
         </div>
       
         <Tabs defaultValue="temperature" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-primary/80">
-                <TabsTrigger value="temperature" className="data-[state=active]:bg-primary/70">Temperature</TabsTrigger>
-                <TabsTrigger value="precipitation" className="data-[state=active]:bg-primary/70">Precipitation</TabsTrigger>
-                <TabsTrigger value="wind" className="data-[state=active]:bg-primary/70">Wind</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 bg-primary/70">
+                <TabsTrigger value="temperature" className="data-[state=active]:bg-primary/90">Temperature</TabsTrigger>
+                <TabsTrigger value="precipitation" className="data-[state=active]:bg-primary/90">Precipitation</TabsTrigger>
+                <TabsTrigger value="wind" className="data-[state=active]:bg-primary/90">Wind</TabsTrigger>
             </TabsList>
             <TabsContent value="temperature" className="mt-4">
                <HourlyWeatherChart data={hourlyDataForChart} unit="°C" color="#facc15" />
@@ -317,7 +318,7 @@ export default function WeatherWidget() {
             </TabsContent>
         </Tabs>
 
-        <div className="mt-6 border-t border-primary/50 pt-4">
+        <div className="mt-6 border-t border-primary-foreground/20 pt-4">
              <div className="grid grid-cols-7 gap-1">
                 {daily.time.map((day, i) => {
                     const dayDate = parseISO(day);
@@ -327,7 +328,7 @@ export default function WeatherWidget() {
                             onClick={() => setSelectedDayIndex(i)}
                             className={cn(
                                 'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors duration-200',
-                                selectedDayIndex === i ? 'bg-primary/70' : 'hover:bg-primary/80'
+                                selectedDayIndex === i ? 'bg-primary/90' : 'hover:bg-primary/70'
                             )}
                         >
                             <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
