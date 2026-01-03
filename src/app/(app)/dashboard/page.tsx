@@ -9,7 +9,6 @@ import { PlusCircle, Tractor } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FarmCard from '@/components/farm-card';
 import WeatherWidget from '@/components/weather-widget';
-import AiRecommendations from '@/components/ai-recommendations';
 
 export default function DashboardPage() {
   const { farms, isLoading } = useFarmStore();
@@ -36,7 +35,6 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <WeatherWidget />
-          <AiRecommendations />
         </div>
         <div className="lg:col-span-1">
           {isLoading ? (
