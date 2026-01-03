@@ -29,9 +29,8 @@ export function useFarmStore() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Use a ref to store active timers to prevent re-renders from clearing them
-  const activeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-
+  // This collection reference is now memoized and depends on the user's UID.
+  // It will be null until the user is authenticated.
   const farmsCollection = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return collection(firestore, 'users', user.uid, 'farms');
@@ -45,6 +44,7 @@ export function useFarmStore() {
 
   useEffect(() => {
     if (farmsError) {
+      // The permission error is now handled globally, so we only toast for other errors.
       if (!(farmsError instanceof FirestorePermissionError)) {
           toast({
             variant: 'destructive',
@@ -61,7 +61,7 @@ export function useFarmStore() {
     const interval = setInterval(() => {
       if (!farms || !user || !firestore) return;
       farms.forEach(farm => {
-        const updates: Partial<Farm> = {};
+        const updates: { [key: string]: any } = {};
         
         const updateDevice = (device: GateValve | Motor, type: DeviceType) => {
           if (device.timer?.isActive) {
@@ -75,15 +75,14 @@ export function useFarmStore() {
               const deviceIndex = (updates[key] as any[]).findIndex(d => d.id === device.id);
               if(deviceIndex > -1) {
                 (updates[key] as any[])[deviceIndex].timer.remainingSeconds = newRemaining;
-              }
 
-              if (newRemaining === 0) {
-                 (updates[key] as any[])[deviceIndex].timer.isActive = false;
-                 (updates[key] as any[])[deviceIndex].status = type === 'valve' ? 'closed' : 'off';
+                if (newRemaining === 0) {
+                   (updates[key] as any[])[deviceIndex].timer.isActive = false;
+                   (updates[key] as any[])[deviceIndex].status = type === 'valve' ? 'closed' : 'off';
+                }
               }
             }
           }
-          return null;
         };
 
         farm.gateValves.forEach(v => updateDevice(v, 'valve'));
@@ -92,7 +91,7 @@ export function useFarmStore() {
         if (Object.keys(updates).length > 0) {
           const farmRef = doc(firestore, 'users', user.uid, 'farms', farm.id);
           updateDoc(farmRef, updates).catch(serverError => {
-            // No need to show error here, as the UI will just stop updating
+            // Error handling for timer updates can be silent as UI will just desync.
             console.error("Error during timer sync:", serverError);
           });
         }
@@ -102,48 +101,44 @@ export function useFarmStore() {
     return () => clearInterval(interval);
   }, [farms, firestore, user]);
 
-  const addFarm = (farmData: Omit<Farm, 'id'>) => {
-    if (!user || !firestore) {
+  const addFarm = async (farmData: Omit<Farm, 'id'>) => {
+    if (!user || !firestore || !farmsCollection) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
         description: 'You must be logged in to add a farm.',
       });
-      return Promise.reject(new Error('User not authenticated'));
+      throw new Error('User not authenticated or collection not ready');
     }
-    if (!farmsCollection) return Promise.reject(new Error('Farms collection not available'));
 
     setIsSubmitting(true);
     const newFarmRef = doc(farmsCollection);
     const newFarmData = {
         ...farmData,
         id: newFarmRef.id,
-        ownerId: user.uid,
+        ownerId: user.uid, // Ensure ownerId is set
     };
     
-    return setDoc(newFarmRef, newFarmData)
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: newFarmRef.path,
-          operation: 'create',
-          requestResourceData: newFarmData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
+    try {
+      await setDoc(newFarmRef, newFarmData);
+    } catch (serverError) {
+      const permissionError = new FirestorePermissionError({
+        path: newFarmRef.path,
+        operation: 'create',
+        requestResourceData: newFarmData,
       });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError; // Re-throw to be caught by caller if needed
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const deleteFarm = (farmId: string) => {
     if (!user || !firestore) return;
     
-    setIsSubmitting(true);
     const farmToDelete = farms?.find((f) => f.id === farmId);
-    if (!farmToDelete) {
-        setIsSubmitting(false);
-        return;
-    }
+    if (!farmToDelete) return;
 
     const docRef = doc(firestore, 'users', user.uid, 'farms', farmId);
     
@@ -160,9 +155,6 @@ export function useFarmStore() {
           operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
       });
   };
 
@@ -176,19 +168,14 @@ export function useFarmStore() {
     const farm = farms?.find((f) => f.id === farmId);
     if (!farm) return;
     
-    setIsSubmitting(true);
-    
     const key = deviceType === 'valve' ? 'gateValves' : 'motors';
     const deviceList = farm[key];
     const deviceIndex = deviceList.findIndex(d => d.id === deviceId);
     
-    if (deviceIndex === -1) {
-      setIsSubmitting(false);
-      return;
-    }
+    if (deviceIndex === -1) return;
 
     const updatedList = [...deviceList];
-    const device = updatedList[deviceIndex];
+    const device = { ...updatedList[deviceIndex] }; // Create a new object for the specific device
     
     device.status = deviceType === 'valve' ? 'open' : 'on';
     device.timer = {
@@ -197,10 +184,11 @@ export function useFarmStore() {
       endTime: Date.now() + durationMinutes * 60 * 1000,
       remainingSeconds: durationMinutes * 60,
     };
+    updatedList[deviceIndex] = device;
     
     const updatedData = { [key]: updatedList };
-
     const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+
     updateDoc(farmRef, updatedData)
       .then(() => {
         toast({
@@ -215,107 +203,53 @@ export function useFarmStore() {
           requestResourceData: updatedData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
       });
   };
+  
+  const _toggleDeviceStatus = (farmId: string, deviceId: string, deviceType: 'valve' | 'motor') => {
+    if (!user || !firestore || !farms) return;
 
-  const toggleValveStatus = (farmId: string, valveId: string) => {
-    if (!user || !firestore) return;
-
-    const farm = farms?.find((f) => f.id === farmId);
-    if (!farm) return;
-
-    const openValvesCount = farm.gateValves.filter(v => v.status === 'open').length;
-    const targetValve = farm.gateValves.find(v => v.id === valveId);
-
-    if (!targetValve) return;
-
-    if (openValvesCount <= 1 && targetValve.status === 'open') {
-      toast({
-        variant: 'destructive',
-        title: 'Action Prevented',
-        description: 'You cannot close the last open valve on the farm.',
-      });
-      return;
-    }
-    
-    if (targetValve.timer?.isActive) {
-      toast({
-        variant: 'destructive',
-        title: 'Action Prevented',
-        description: 'Cannot toggle a device while a timer is active.',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    let toggledValveName = '';
-    const updatedValves = farm.gateValves.map((valve) => {
-      if (valve.id === valveId) {
-        toggledValveName = valve.name;
-        return {
-          ...valve,
-          status: valve.status === 'open' ? 'closed' : 'open',
-          timer: { ...valve.timer, isActive: false } as any, // Deactivate timer on manual toggle
-        };
-      }
-      return valve;
-    });
-
-    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
-    const updatedData = { gateValves: updatedValves };
-
-    updateDoc(farmRef, updatedData)
-      .catch(serverError => {
-         const permissionError = new FirestorePermissionError({
-          path: farmRef.path,
-          operation: 'update',
-          requestResourceData: updatedData
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-          setIsSubmitting(false);
-      });
-  };
-
-  const toggleMotorStatus = (farmId: string, motorId: string) => {
-    if (!user || !firestore) return;
-
-    const farm = farms?.find((f) => f.id === farmId);
+    const farm = farms.find((f) => f.id === farmId);
     if (!farm) return;
     
-    const targetMotor = farm.motors.find(m => m.id === motorId);
-    if (!targetMotor) return;
+    const isValve = deviceType === 'valve';
+    const key = isValve ? 'gateValves' : 'motors';
+    const deviceList = farm[key];
+    const deviceIndex = deviceList.findIndex(d => d.id === deviceId);
 
-    if (targetMotor.timer?.isActive) {
-      toast({
-        variant: 'destructive',
-        title: 'Action Prevented',
-        description: 'Cannot toggle a device while a timer is active.',
-      });
+    if (deviceIndex === -1) return;
+    
+    const device = deviceList[deviceIndex];
+
+    // Prevent toggling if a timer is active
+    if (device.timer?.isActive) {
+      toast({ variant: 'destructive', title: 'Action Prevented', description: 'Cannot toggle a device while a timer is active.' });
       return;
     }
 
-    setIsSubmitting(true);
-    
-    const updatedMotors = farm.motors.map((motor) => {
-      if (motor.id === motorId) {
-        return { 
-            ...motor, 
-            status: motor.status === 'on' ? 'off' : 'on',
-            timer: { ...motor.timer, isActive: false } as any, // Deactivate timer on manual toggle
-        };
+    // Special rule for valves: cannot close the last open one
+    if (isValve) {
+      const openValvesCount = (farm.gateValves as GateValve[]).filter(v => v.status === 'open').length;
+      if (openValvesCount <= 1 && device.status === 'open') {
+        toast({ variant: 'destructive', title: 'Action Prevented', description: 'You cannot close the last open valve on the farm.' });
+        return;
       }
-      return motor;
-    });
-
-    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
-    const updatedData = { motors: updatedMotors };
+    }
     
+    const newStatus = device.status === (isValve ? 'open' : 'on') 
+      ? (isValve ? 'closed' : 'off') 
+      : (isValve ? 'open' : 'on');
+
+    const updatedList = [...deviceList];
+    updatedList[deviceIndex] = {
+      ...device,
+      status: newStatus,
+      timer: { ...device.timer, isActive: false } as any, // Deactivate timer on manual toggle
+    };
+
+    const updatedData = { [key]: updatedList };
+    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+
     updateDoc(farmRef, updatedData)
       .catch(serverError => {
         const permissionError = new FirestorePermissionError({
@@ -324,10 +258,15 @@ export function useFarmStore() {
           requestResourceData: updatedData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
       });
+  };
+
+  const toggleValveStatus = (farmId: string, valveId: string) => {
+    _toggleDeviceStatus(farmId, valveId, 'valve');
+  };
+
+  const toggleMotorStatus = (farmId: string, motorId: string) => {
+    _toggleDeviceStatus(farmId, motorId, 'motor');
   };
   
   const isLoading = userLoading || farmsLoading;

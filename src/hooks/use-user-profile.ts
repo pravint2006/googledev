@@ -2,8 +2,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useUser, useFirestore, useDoc, type User } from '@/firebase';
-import { doc, updateDoc, setDoc, getDoc, DocumentReference } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc, updateDoc, setDoc, DocumentReference } from 'firebase/firestore';
 import { useToast } from './use-toast';
 
 // Define the shape of the location data we will store
@@ -34,9 +34,10 @@ export function useUserProfile() {
   const { toast } = useToast();
 
   // Create a memoized reference to the user's document in Firestore.
-  // This prevents re-creating the reference on every render.
-  const userDocRef = useMemo(() => {
+  // This ensures the path is always correct and stable.
+  const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
+    // The path now strictly follows /users/{uid}
     return doc(firestore, 'users', user.uid) as DocumentReference<UserProfile>;
   }, [user, firestore]);
 
@@ -49,17 +50,19 @@ export function useUserProfile() {
    * @param data - The partial profile data to update.
    */
   const updateUserProfile = async (data: Partial<UserProfile>) => {
+    // This check is crucial. No operation runs if the user/docRef is not ready.
     if (!userDocRef) {
-      // Don't show a toast, just log it. This can happen during initial load.
-      console.log('User profile update skipped: user not authenticated.');
+      console.warn('User profile update skipped: user not authenticated or Firestore not ready.');
       return;
     }
 
     try {
-      // Use setDoc with merge to update or create the document.
+      // Use setDoc with merge to safely update or create the document.
       await setDoc(userDocRef, data, { merge: true });
     } catch (e) {
       console.error('Error updating user profile:', e);
+      // We don't emit a permission error here because it's handled by the global listener,
+      // but we can still show a generic toast for other potential issues.
       toast({
         variant: 'destructive',
         title: 'Profile Update Failed',
@@ -68,10 +71,9 @@ export function useUserProfile() {
     }
   };
   
-    // Handle potential errors from fetching the document.
   if (error) {
     console.error("Error fetching user profile:", error);
-    // You could optionally show a toast here, but it might be noisy.
+    // The global FirebaseErrorListener will catch and display permission errors.
   }
 
   return {
@@ -80,6 +82,3 @@ export function useUserProfile() {
     isLoading: isUserLoading || isProfileLoading,
   };
 }
-
-// Export the function to be used in server-side flows
-export { updateUserProfile as serverUpdateUserProfile } from '@/hooks/use-user-profile';

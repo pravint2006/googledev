@@ -53,6 +53,7 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Do nothing if Firebase isn't ready
     if (!auth || !firestore) return;
     setIsLoading(true);
 
@@ -67,20 +68,20 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     }
 
     try {
+      // 1. Create the user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-
       const user = userCredential.user;
       
-      // Update the user's profile in Firebase Auth
+      // 2. Update the user's profile in Firebase Auth with their display name
       await updateProfile(user, {
         displayName: displayName,
       });
 
-      // Create the user's document in Firestore
+      // 3. Create the user's profile document in Firestore at /users/{uid}
       const userDocRef = doc(firestore, 'users', user.uid);
       const [firstName, ...lastNameParts] = displayName.split(' ');
       const lastName = lastNameParts.join(' ');
@@ -92,14 +93,14 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         lastName: lastName || '',
       });
       
-      // Send verification email
+      // 4. Send a verification email
       await sendEmailVerification(user);
       
       toast({
         title: 'Account Created!',
         description: "We've sent a verification link to your email address.",
       });
-      // The FirebaseProvider will handle the redirect.
+      // The FirebaseProvider will handle the redirect to the verify-email page.
     } catch (error) {
       let errorMessage = 'An unknown error occurred.';
       const authError = error as AuthError;
@@ -136,8 +137,8 @@ export function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     const provider = new GoogleAuthProvider();
 
     try {
+        // This initiates the redirect. The result is handled on the login page after returning.
         await signInWithRedirect(auth, provider);
-        // The result is handled on the login page after redirect.
     } catch (error) {
       const authError = error as AuthError;
       toast({
