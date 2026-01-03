@@ -65,7 +65,7 @@ export default function FarmForm() {
   };
   
   const handleFinalSubmit = async (finalDevices: { type: 'valve' | 'motor', name: string, position: { lat: number, lng: number } }[]) => {
-    const totalDevices = watchedValues.valveCount + watchedValues.motorCount;
+    const totalDevices = Number(watchedValues.valveCount) + Number(watchedValues.motorCount);
      if (finalDevices.length < totalDevices) {
         toast({
             variant: "destructive",
@@ -208,5 +208,3 @@ export default function FarmForm() {
     </Card>
   );
 }
-
-    
