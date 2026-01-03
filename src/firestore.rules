@@ -10,8 +10,6 @@
  *
  * Data Structure:
  * All data is hierarchically nested under a user-specific path: `/users/{userId}`.
- * A user's profile is at `/users/{userId}`. Their farms are in a subcollection
- * at `/users/{userId}/farms/{farmId}`, and devices for that farm are further nested.
  * This structure makes ownership clear and allows for efficient, path-based security.
  *
  * Key Security Decisions:
@@ -21,9 +19,6 @@
  *   user's UID (`request.auth.uid`) with the `{userId}` wildcard in the document path.
  * - No Cross-User Access: There are no rules that permit one user to view or
  *   modify another user's data.
- * - Relational Integrity: On document creation, rules validate that internal ID
- *   fields (e.g., `ownerId`, `farmId`) match the IDs in the document path, ensuring
- *   data consistency. These fields are enforced as immutable on update.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -40,84 +35,21 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function isValidNewUser(userId) {
-      // The only strict requirement is that the document ID matches the user's UID.
-      // Other fields like email, firstName, etc., are expected.
-      return request.resource.data.id == userId;
-    }
-
-    function hasImmutableUserFields() {
-      // Allow updates to user profile fields, but prevent changing the user's ID.
-      // This allows fields like lastWeatherLocation to be updated freely.
-      return request.resource.data.id == resource.data.id;
-    }
-
-    function isValidNewFarm(userId, farmId) {
-      let data = request.resource.data;
-      return data.ownerId == userId && data.id == farmId;
-    }
-
-    function hasImmutableFarmFields() {
-      // Allow updates to all farm fields (name, location, devices)
-      // but explicitly prevent changing the core ownership and ID fields.
-      let incomingData = request.resource.data;
-      let existingData = resource.data;
-      return incomingData.ownerId == existingData.ownerId
-          && incomingData.id == existingData.id;
-    }
-
-    function isValidNewGateValve(farmId, gateValveId) {
-      let data = request.resource.data;
-      return data.farmId == farmId
-          && data.id == gateValveId;
-    }
-
-    function hasImmutableGateValveFields() {
-      let data = request.resource.data;
-      return data.farmId == resource.data.farmId
-          && data.id == resource.data.id;
-    }
-
-    function isValidNewMotor(farmId, motorId) {
-      let data = request.resource.data;
-      return data.farmId == farmId && data.id == motorId;
-    }
-
-    function hasImmutableMotorFields() {
-      let data = request.resource.data;
-      return data.farmId == resource.data.farmId && data.id == resource.data.id;
-    }
-
 
     // -------------------------------------------------------------------------
     // Collection Rules
     // -------------------------------------------------------------------------
 
+    // User can only read/write documents under their own user ID.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Explicitly handle the top-level user profile document to prevent list operations.
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && isValidNewUser(userId);
-      allow update: if isOwner(userId) && hasImmutableUserFields();
-      allow delete: if isOwner(userId);
-
-      match /farms/{farmId} {
-        allow get, list, delete: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidNewFarm(userId, farmId);
-        allow update: if isOwner(userId) && hasImmutableFarmFields();
-        
-        match /gateValves/{gateValveId} {
-          allow get, list, delete: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidNewGateValve(farmId, gateValveId);
-          allow update: if isOwner(userId) && hasImmutableGateValveFields();
-        }
-
-        match /motors/{motorId} {
-          allow get, list, delete: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidNewMotor(farmId, motorId);
-          allow update: if isOwner(userId) && hasImmutableMotorFields();
-        }
-      }
+       allow get, create, update, delete: if isOwner(userId);
+       // Disallow listing all users.
+       allow list: if false;
     }
   }
 }
