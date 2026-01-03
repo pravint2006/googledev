@@ -159,7 +159,7 @@ export default function FarmDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle className='font-headline'>Motor Control</CardTitle>
-              </Header>
+              </CardHeader>
               <CardContent className="space-y-4">
                 {farm.motors.length > 0 ? (
                   farm.motors.map(motor => (
@@ -236,5 +236,3 @@ function FarmDetailLoadingSkeleton() {
     </div>
   );
 }
-
-    
