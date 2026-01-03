@@ -28,6 +28,13 @@ interface MapPickerProps {
 
 const libraries: Libraries = ['places'];
 
+// Custom SVG path for a valve icon
+const valvePath = 'M-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 M-12,-2 h24 v4 h-24 z M-2,-12 v24 h4 v-24 z';
+
+// Custom SVG path for a motor icon (Circle with 'M')
+const motorPath = 'M-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 M-6,-5 h2 l2,5 2,-5 h2 v10 h-2 v-4 l-2,4 -2,-4 v4 h-2 z';
+
+
 export default function MapPicker({
   devices: initialDevices,
   totalValves,
@@ -36,7 +43,7 @@ export default function MapPicker({
   isSubmitting,
   initialCenter = { lat: 11.1271, lng: 78.6569 },
 }: MapPickerProps) {
-  const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
   const [devices, setDevices] = useState(initialDevices);
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState<number | null>(null);
   const [placementMode, setPlacementMode] = useState<'valve' | 'motor'>('valve');
@@ -153,14 +160,13 @@ export default function MapPicker({
           <Marker
             key={index}
             position={device.position}
-            label={(index + 1).toString()}
             icon={{
-              path: device.type === 'valve' ? window.google.maps.SymbolPath.CIRCLE : window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: device.type === 'valve' ? 8 : 6,
-              fillColor: device.type === 'valve' ? '#4ade80' : '#facc15', // green for valve, yellow for motor
-              fillOpacity: 1,
-              strokeWeight: 1,
-              rotation: device.type === 'motor' ? Math.random() * 360 : 0
+                path: device.type === 'valve' ? valvePath : motorPath,
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                strokeColor: device.type === 'valve' ? '#4ade80' : '#facc15',
+                strokeWeight: 2,
+                scale: 0.8
             }}
             onClick={() => setSelectedDeviceIndex(index)}
           />

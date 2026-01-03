@@ -18,8 +18,15 @@ interface FarmMapProps {
 
 const libraries: Libraries = ['places'];
 
+// Custom SVG path for a valve icon
+const valvePath = 'M-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 M-12,-2 h24 v4 h-24 z M-2,-12 v24 h4 v-24 z';
+
+// Custom SVG path for a motor icon (Circle with 'M')
+const motorPath = 'M-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 M-6,-5 h2 l2,5 2,-5 h2 v10 h-2 v-4 l-2,4 -2,-4 v4 h-2 z';
+
+
 export default function FarmMap({ devices, center }: FarmMapProps) {
-  const apiKey = "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28";
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
@@ -62,24 +69,33 @@ export default function FarmMap({ devices, center }: FarmMapProps) {
         zoom={15}
         options={mapOptions}
     >
-        {devices.map((device, index) => (
-          <Marker
-            key={device.id}
-            position={device.position}
-            label={(index + 1).toString()}
-            title={device.name}
-            icon={{
-              path: device.type === 'valve' ? window.google.maps.SymbolPath.CIRCLE : window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: device.type === 'valve' ? 8 : 6,
-              fillColor: device.type === 'valve' ? '#4ade80' : '#facc15', // green for valve, yellow for motor
-              fillOpacity: 1,
-              strokeWeight: 1,
-              rotation: device.type === 'motor' ? Math.random() * 360 : 0
-            }}
-          />
-        ))}
+        {devices.map((device, index) => {
+            const isValve = device.type === 'valve';
+            const isActive = isValve ? (device as GateValve).status === 'open' : (device as Motor).status === 'on';
+
+            return (
+              <Marker
+                key={device.id}
+                position={device.position}
+                title={device.name}
+                icon={{
+                  path: isValve ? valvePath : motorPath,
+                  fillColor: '#ffffff',
+                  fillOpacity: 1,
+                  strokeColor: isActive ? (isValve ? '#4ade80' : '#facc15') : '#9ca3af',
+                  strokeWeight: 2,
+                  scale: 0.8,
+                  labelOrigin: new google.maps.Point(0, 25),
+                }}
+                label={{
+                  text: device.name,
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  className: 'map-label' 
+                }}
+              />
+            );
+        })}
     </GoogleMap>
   );
 }
-
-    
