@@ -34,19 +34,19 @@ export function WindChart({ data }: WindChartProps) {
 
           return (
             <div key={hour.time} className="flex flex-col items-center gap-3">
-              <div className="text-xs text-slate-400 font-medium h-4">
+              <div className="text-xs text-primary-foreground/70 font-medium h-4">
                   {showTime ? `${hour.speed} km/h` : ''}
               </div>
               <div className="h-8 flex items-center">
                   <ArrowDown
-                      className="text-slate-300 transition-transform duration-500"
+                      className="text-primary-foreground/90 transition-transform duration-500"
                       style={{
                           transform: `rotate(${hour.direction}deg) scale(${getScale(hour.speed)})`,
                       }}
                       size={20}
                   />
               </div>
-              <div className={cn("text-sm h-4", showTime ? "text-slate-200" : "text-transparent")}>
+              <div className={cn("text-sm h-4", showTime ? "text-primary-foreground" : "text-transparent")}>
                   {showTime ? format(parseISO(hour.time), 'ha').toLowerCase() : '0am'}
               </div>
             </div>
@@ -57,3 +57,5 @@ export function WindChart({ data }: WindChartProps) {
     </ScrollArea>
   );
 }
+
+    

@@ -21,9 +21,9 @@ import { cn } from '@/lib/utils';
 
 function WeatherSkeleton() {
   return (
-    <Card className="bg-primary-dark/80 text-white border-green-900/50 p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
-        <Loader2 className="h-10 w-10 animate-spin text-slate-400" />
-        <p className="mt-4 text-slate-400">Fetching weather data...</p>
+    <Card className="bg-primary/90 text-primary-foreground border-primary p-6 flex flex-col items-center justify-center min-h-[360px] animate-pulse">
+        <Loader2 className="h-10 w-10 animate-spin" />
+        <p className="mt-4">Fetching weather data...</p>
     </Card>
   );
 }
@@ -43,6 +43,22 @@ export default function WeatherWidget() {
     googleMapsApiKey: "AIzaSyAugxfHDgayygJevNNKsEbCB1pCtPnFr28",
     libraries,
   });
+
+  const weatherDescription = (code: number): string => {
+    const descriptions: { [key: number]: string } = {
+        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Depositing rime fog',
+        51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+        56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
+        61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
+        66: 'Light freezing rain', 67: 'Heavy freezing rain',
+        71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
+        77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
+        82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
+        95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
+    };
+    return descriptions[code] || 'Unknown';
+  };
 
   const fetchWeather = async (params: { latitude?: number; longitude?: number; city?: string } = {}) => {
     setLoading(true);
@@ -129,23 +145,6 @@ export default function WeatherWidget() {
     }
   };
   
-    const weatherDescription = (code: number): string => {
-        const descriptions: { [key: number]: string } = {
-            0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-            45: 'Fog', 48: 'Depositing rime fog',
-            51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
-            56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
-            61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
-            66: 'Light freezing rain', 67: 'Heavy freezing rain',
-            71: 'Slight snow fall', 73: 'Snow fall', 75: 'Heavy snow fall',
-            77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers',
-            82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
-            95: 'Thunderstorm', 96: 'Thunderstorm, slight hail', 99: 'Thunderstorm, heavy hail',
-        };
-        return descriptions[code] || 'Unknown';
-    };
-  
-    // All hooks must be called before this point.
   const displayData = useMemo(() => {
     if (!weatherData) return null;
     const { current, daily } = weatherData;
@@ -217,7 +216,7 @@ export default function WeatherWidget() {
 
   const renderSearch = () => {
     if (!isLoaded) {
-      return <Input placeholder="Loading search..." disabled className="bg-primary-dark/50 border-green-900 text-white h-9 text-sm w-full max-w-xs" />
+      return <Input placeholder="Loading search..." disabled className="bg-primary/80 border-green-700 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full max-w-xs" />
     }
     return (
         <Autocomplete
@@ -233,7 +232,7 @@ export default function WeatherWidget() {
               value={citySearch} 
               onChange={(e) => setCitySearch(e.target.value)} 
               placeholder="Search for a city in India..." 
-              className="bg-primary-dark/50 border-green-900 text-white h-9 text-sm w-full"
+              className="bg-primary/80 border-green-700 text-white placeholder:text-primary-foreground/70 h-9 text-sm w-full"
             />
         </Autocomplete>
     );
@@ -246,10 +245,10 @@ export default function WeatherWidget() {
 
   if (error) {
     return (
-        <Card className="bg-primary-dark/80 text-white border-destructive/50 p-6">
+        <Card className="bg-primary/90 text-primary-foreground border-destructive/50 p-6">
              <Alert variant="destructive" className='border-0 text-white'>
-                <AlertTitle className="text-red-400">Could Not Load Weather</AlertTitle>
-                <AlertDescription className="text-red-300/90">{error}</AlertDescription>
+                <AlertTitle className="text-red-300">Could Not Load Weather</AlertTitle>
+                <AlertDescription className="text-red-400/90">{error}</AlertDescription>
             </Alert>
             <form onSubmit={handleSearch} className="flex gap-2 mt-4">
                  {renderSearch()}
@@ -268,28 +267,30 @@ export default function WeatherWidget() {
   const displayLocation = fullLocationName ? `${fullLocationName}${pincode ? ` - ${pincode}` : ''}` : `${locationName}${pincode ? ` - ${pincode}` : ''}`;
 
   return (
-    <Card className="bg-primary-dark/80 text-white border-green-900/50 p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
+    <Card className="bg-primary/90 text-primary-foreground border-primary p-6 backdrop-blur-sm shadow-2xl shadow-slate-900/50">
         <div className="flex justify-between items-start gap-4">
             <div>
                 <p className="flex items-center gap-2 text-lg"><MapPin size={16} />{locationName}</p>
                  {(fullLocationName || pincode) && (
-                    <p className="text-xs text-slate-400 ml-6 truncate" title={displayLocation}>
+                    <p className="text-xs text-primary-foreground/70 ml-6 truncate" title={displayLocation}>
                         {displayLocation.split(',').slice(1).join(',').trim()}
                     </p>
                 )}
             </div>
             <form onSubmit={handleSearch} className="flex gap-2 w-full max-w-xs">
               {renderSearch()}
-              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-green-900/50"><Search size={16} /></Button>
+              <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary">
+                <Search size={16} />
+              </Button>
             </form>
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-center my-6 md:my-10 gap-4 md:gap-8 text-center md:text-left">
             <WeatherIcon weatherCode={displayData.weatherCode} isDay={displayData.isDay} className="w-24 h-24 md:w-32 md:h-32" />
             <div>
-                <p className="text-7xl md:text-8xl font-light">{displayData.temp}<span className="text-5xl md:text-6xl text-slate-400 align-top">°C</span></p>
-                <p className="text-lg text-slate-300 -mt-2">{displayData.description}</p>
-                <div className="flex gap-4 justify-center md:justify-start mt-2 text-sm text-slate-400">
+                <p className="text-7xl md:text-8xl font-light">{displayData.temp}<span className="text-5xl md:text-6xl text-primary-foreground/70 align-top">°C</span></p>
+                <p className="text-lg text-primary-foreground/80 -mt-2">{displayData.description}</p>
+                <div className="flex gap-4 justify-center md:justify-start mt-2 text-sm text-primary-foreground/70">
                     <span className='font-semibold'>{displayData.highTemp}°</span> / {displayData.lowTemp}°
                     {displayData.humidity !== null && <span className="flex items-center gap-1"><Droplet size={14} />{displayData.humidity}%</span>}
                     {displayData.windSpeed !== null && <span className="flex items-center gap-1"><Wind size={14} />{displayData.windSpeed} km/h</span>}
@@ -298,7 +299,7 @@ export default function WeatherWidget() {
         </div>
       
         <Tabs defaultValue="temperature" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-primary-dark/60">
+            <TabsList className="grid w-full grid-cols-3 bg-primary/80">
                 <TabsTrigger value="temperature">Temperature</TabsTrigger>
                 <TabsTrigger value="precipitation">Precipitation</TabsTrigger>
                 <TabsTrigger value="wind">Wind</TabsTrigger>
@@ -314,7 +315,7 @@ export default function WeatherWidget() {
             </TabsContent>
         </Tabs>
 
-        <div className="mt-6 border-t border-green-900/50 pt-4">
+        <div className="mt-6 border-t border-primary pt-4">
              <div className="grid grid-cols-7 gap-1">
                 {daily.time.map((day, i) => {
                     const dayDate = parseISO(day);
@@ -324,15 +325,15 @@ export default function WeatherWidget() {
                             onClick={() => setSelectedDayIndex(i)}
                             className={cn(
                                 'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors duration-200',
-                                selectedDayIndex === i ? 'bg-green-900/50' : 'hover:bg-green-900/30'
+                                selectedDayIndex === i ? 'bg-primary' : 'hover:bg-primary/80'
                             )}
                         >
                             <p className="text-sm font-medium">{isToday(dayDate) ? 'Today' : format(dayDate, 'E')}</p>
-                            <p className="text-xs text-slate-400">{format(dayDate, 'd')}</p>
+                            <p className="text-xs text-primary-foreground/70">{format(dayDate, 'd')}</p>
                             <WeatherIcon weatherCode={daily.weatherCode[i]} isDay={true} className="w-8 h-8 my-1" />
                             <p className="text-sm">
                                 <span className="font-semibold">{daily.temperatureMax[i]}°</span>
-                                <span className="text-slate-400 ml-1">{daily.temperatureMin[i]}°</span>
+                                <span className="text-primary-foreground/70 ml-1">{daily.temperatureMin[i]}°</span>
                             </p>
                         </button>
                     );
@@ -342,3 +343,5 @@ export default function WeatherWidget() {
     </Card>
   );
 }
+
+    
