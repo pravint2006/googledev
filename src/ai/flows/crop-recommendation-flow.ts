@@ -2,22 +2,24 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import {
-  CropRecommendationInputSchema,
-  CropRecommendationResponseSchema,
-  type CropRecommendationInput,
-  type CropRecommendationResponse,
-} from './crop-recommendation-types';
-import { googleAI } from '@genkit-ai/google-genai';
+import { z } from 'zod';
+
+export const CropRecommendationInputSchema = z.object({
+  location: z.string(),
+  season: z.string(),
+  tempMin: z.number(),
+  tempMax: z.number(),
+  rainfall: z.string(),
+  soilType: z.string().optional(),
+  waterSource: z.string().optional(),
+});
+export type CropRecommendationInput = z.infer<
+  typeof CropRecommendationInputSchema
+>;
 
 const recommendationPrompt = ai.definePrompt({
-  name: 'cropRecommendationPrompt',
+  name: 'cropRecommendationCsvPrompt',
   input: { schema: CropRecommendationInputSchema },
-  output: { schema: CropRecommendationResponseSchema },
-  config: {
-    model: googleAI.model('gemini-1.5-flash-latest'),
-    temperature: 0.2,
-  },
   prompt: `
       You are an expert agricultural advisor for Indian farmers. 
       Your task is to recommend 3-4 suitable plants or crops based on the provided data.
@@ -31,55 +33,51 @@ const recommendationPrompt = ai.definePrompt({
       - Water Source: {{waterSource}}
 
       YOUR TASK:
-      - Based on the context above, generate a list of 3-4 crop recommendations suitable for the upcoming planting period.
-      - For each recommendation, provide the plant name, a short reason for its suitability, its water requirement, and the ideal planting period.
-      - Keep the language simple and direct for a farmer.
+      - Generate a list of 3-4 crop recommendations suitable for the upcoming planting period.
+      - Return the data as a CSV (Comma-Separated Values) string.
+      - The CSV headers must be: plant,reason,waterRequirement,plantingPeriod
+      - Each recommendation should be on a new line.
+      - Do NOT include any text, explanations, or markdown before or after the CSV data.
+
+      EXAMPLE OUTPUT:
+      plant,reason,waterRequirement,plantingPeriod
+      Tomato,"Thrives in these temperatures and loamy soil. Good market demand.","medium","June-July"
+      "Lady's Finger (Okra)","Resistant to heat and suitable for the observed rainfall patterns.","low","June-July"
+      "Brinjal (Eggplant)","Well-suited for the Kharif season with these conditions.","medium","June-July"
       `,
 });
 
 const getRecommendationsFlow = ai.defineFlow(
   {
-    name: 'getRecommendationsFlow',
+    name: 'getRecommendationsCsvFlow',
     inputSchema: CropRecommendationInputSchema,
-    outputSchema: CropRecommendationResponseSchema,
+    outputSchema: z.string(),
   },
   async (input) => {
     try {
       const { output } = await recommendationPrompt(input);
       if (!output) {
-        throw new Error('AI returned no output.');
+        // Return a header-only CSV string if AI returns no output
+        return 'plant,reason,waterRequirement,plantingPeriod';
       }
-      // Genkit's `output: { schema: ... }` handles the parsing.
-      // If it fails, it will throw an error that we catch below.
-      return output;
+      return output.trim();
     } catch (e: any) {
       console.error(
-        'Failed to generate or parse recommendations from AI:',
+        'Failed to generate recommendations from AI:',
         e.message
       );
       // If the model output is available in the error, log it for debugging.
       if (e.output) {
         console.error('AI raw output:', e.output);
       }
-      // Instead of throwing an error, return a default "safe" response
-      // that the UI can render without crashing.
-      return {
-        recommendations: [
-          {
-            plant: 'AI Error',
-            reason:
-              'Could not generate AI recommendations at this time. Please try again later.',
-            waterRequirement: 'medium',
-            plantingPeriod: 'N/A',
-          },
-        ],
-      };
+      // Return a specific error string that the frontend can check for.
+      return 'AI_ERROR:Could not generate recommendations.';
     }
   }
 );
 
 export async function getRecommendations(
   input: CropRecommendationInput
-): Promise<CropRecommendationResponse> {
+): Promise<string> {
   return await getRecommendationsFlow(input);
 }

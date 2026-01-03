@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -24,10 +24,8 @@ import {
 } from 'lucide-react';
 import { useWeatherStore } from '@/hooks/use-weather-store';
 import { getRecommendations } from '@/ai/flows/crop-recommendation-flow';
-import { type CropRecommendationResponse } from '@/ai/flows/crop-recommendation-types';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
 
 // Helper function to determine season
 const getSeason = (date: Date) => {
@@ -68,10 +66,49 @@ function RecommendationSkeleton() {
   );
 }
 
+interface ParsedRecommendation {
+  plant: string;
+  reason: string;
+  waterRequirement: string;
+  plantingPeriod: string;
+}
+
+// Function to parse the CSV string from the AI
+const parseCsvResponse = (csvString: string): ParsedRecommendation[] => {
+  if (!csvString || typeof csvString !== 'string') return [];
+  
+  const rows = csvString.trim().split('\n');
+  if (rows.length < 2) return []; // Expecting header + at least one data row
+
+  const headers = rows[0].split(',').map(h => h.trim());
+  const plantIndex = headers.indexOf('plant');
+  const reasonIndex = headers.indexOf('reason');
+  const waterIndex = headers.indexOf('waterRequirement');
+  const periodIndex = headers.indexOf('plantingPeriod');
+  
+  if (plantIndex === -1 || reasonIndex === -1 || waterIndex === -1 || periodIndex === -1) {
+    console.error("CSV headers are missing or incorrect.");
+    return [];
+  }
+  
+  return rows.slice(1).map(row => {
+    // Basic CSV parsing that handles values with commas if they are quoted
+    const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+    const cleanValues = values.map(v => v.trim().replace(/^"|"$/g, ''));
+    
+    return {
+      plant: cleanValues[plantIndex] || '',
+      reason: cleanValues[reasonIndex] || '',
+      waterRequirement: cleanValues[waterIndex] || 'medium',
+      plantingPeriod: cleanValues[periodIndex] || 'N/A',
+    };
+  }).filter(rec => rec.plant); // Filter out any empty rows
+};
+
+
 export default function CropRecommendations() {
   const { weatherData, loading: weatherLoading } = useWeatherStore();
-  const [recommendations, setRecommendations] =
-    useState<CropRecommendationResponse | null>(null);
+  const [recommendationCsv, setRecommendationCsv] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +132,12 @@ export default function CropRecommendations() {
           waterSource: 'Irrigation', // Placeholder
         };
         const response = await getRecommendations(input);
-        setRecommendations(response);
+        
+        if (response.startsWith('AI_ERROR:')) {
+            throw new Error(response.replace('AI_ERROR:', ''));
+        }
+        
+        setRecommendationCsv(response);
       } catch (e: any) {
         setError(e.message || 'An unexpected error occurred.');
         console.error('Error generating crop recommendations:', e);
@@ -104,14 +146,14 @@ export default function CropRecommendations() {
       }
     };
 
-    // Only run if weather data is available
     if (!weatherLoading && weatherData) {
       generateRecommendations();
     } else if (!weatherLoading && !weatherData) {
-      // Handle case where weather couldn't load
       setLoading(false);
     }
   }, [weatherData, weatherLoading]);
+
+  const recommendations = useMemo(() => parseCsvResponse(recommendationCsv || ''), [recommendationCsv]);
 
   const renderContent = () => {
     if (loading || weatherLoading) {
@@ -137,32 +179,8 @@ export default function CropRecommendations() {
         </Card>
       );
     }
-    
-    // Check for the specific AI Error case
-    if (recommendations?.recommendations[0]?.plant === 'AI Error') {
-        const aiError = recommendations.recommendations[0];
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-3 font-headline">
-                        <BrainCircuit className="h-6 w-6 text-primary" />
-                        AI Crop Advisor
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>AI Error</AlertTitle>
-                        <AlertDescription>
-                            {aiError.reason}
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
-        );
-    }
 
-    if (!recommendations || recommendations.recommendations.length === 0) {
+    if (!recommendations || recommendations.length === 0) {
       return null; // Don't show the card if there are no recommendations
     }
 
@@ -179,7 +197,7 @@ export default function CropRecommendations() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {recommendations.recommendations.map((rec, index) => (
+          {recommendations.map((rec, index) => (
             <div key={index}>
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="p-3 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -202,7 +220,7 @@ export default function CropRecommendations() {
                   </div>
                 </div>
               </div>
-              {index < recommendations.recommendations.length - 1 && (
+              {index < recommendations.length - 1 && (
                   <Separator className="my-4" />
               )}
             </div>
