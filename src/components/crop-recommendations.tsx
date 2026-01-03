@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useWeatherStore } from '@/hooks/use-weather-store';
 import { getRecommendations } from '@/ai/flows/crop-recommendation-flow';
+import { type CropRecommendationInput } from '@/ai/flows/crop-recommendation-types';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 
@@ -120,7 +121,7 @@ export default function CropRecommendations() {
       setError(null);
 
       try {
-        const input = {
+        const input: CropRecommendationInput = {
           location: weatherData.locationName,
           season: getSeason(new Date()),
           tempMin: Math.min(...weatherData.daily.temperatureMin),

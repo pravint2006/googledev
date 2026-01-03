@@ -3,19 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-
-export const CropRecommendationInputSchema = z.object({
-  location: z.string(),
-  season: z.string(),
-  tempMin: z.number(),
-  tempMax: z.number(),
-  rainfall: z.string(),
-  soilType: z.string().optional(),
-  waterSource: z.string().optional(),
-});
-export type CropRecommendationInput = z.infer<
-  typeof CropRecommendationInputSchema
->;
+import { CropRecommendationInput, CropRecommendationInputSchema } from './crop-recommendation-types';
 
 const recommendationPrompt = ai.definePrompt({
   name: 'cropRecommendationCsvPrompt',
