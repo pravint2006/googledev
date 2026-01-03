@@ -14,19 +14,42 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
 import DeleteFarmDialog from '@/components/delete-farm-dialog';
 import FarmMap from '@/components/farm-map';
+import DeviceTimerDialog from '@/components/device-timer-dialog';
+import { type DeviceTimer, type GateValve, type Motor } from '@/lib/data';
+
+type DeviceType = 'valve' | 'motor';
 
 export default function FarmDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === 'string' ? params.id : '';
-  const { getFarmById, toggleValveStatus, toggleMotorStatus, deleteFarm, isLoading } = useFarmStore();
+  const { getFarmById, toggleValveStatus, toggleMotorStatus, deleteFarm, setDeviceTimer, isLoading } = useFarmStore();
   const farm = getFarmById(id);
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [timerDialogState, setTimerDialogState] = useState<{
+    isOpen: boolean;
+    deviceId: string | null;
+    deviceType: DeviceType | null;
+    deviceName: string | null;
+  }>({ isOpen: false, deviceId: null, deviceType: null, deviceName: null });
 
   const handleDelete = () => {
     deleteFarm(id);
     router.push('/dashboard');
   };
+
+  const handleSetTimer = (durationMinutes: number) => {
+    if (farm && timerDialogState.deviceId && timerDialogState.deviceType) {
+      setDeviceTimer(farm.id, timerDialogState.deviceId, timerDialogState.deviceType, durationMinutes);
+    }
+    setTimerDialogState({ isOpen: false, deviceId: null, deviceType: null, deviceName: null });
+  };
+  
+  const openTimerDialog = (deviceId: string, deviceType: DeviceType, deviceName: string) => {
+    setTimerDialogState({ isOpen: true, deviceId, deviceType, deviceName });
+  };
+
 
   if (isLoading) {
     return <FarmDetailLoadingSkeleton />;
@@ -57,6 +80,13 @@ export default function FarmDetailPage() {
         onConfirm={handleDelete}
         farmName={farm.name}
       />
+      <DeviceTimerDialog
+        isOpen={timerDialogState.isOpen}
+        onClose={() => setTimerDialogState({ isOpen: false, deviceId: null, deviceType: null, deviceName: null })}
+        onConfirm={handleSetTimer}
+        deviceName={timerDialogState.deviceName || ''}
+      />
+
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
           <div>
@@ -109,7 +139,8 @@ export default function FarmDetailPage() {
                         key={valve.id}
                         valve={valve}
                         onToggle={() => toggleValveStatus(farm.id, valve.id)}
-                        disabled={isLastOpenValve}
+                        onSetTimer={() => openTimerDialog(valve.id, 'valve', valve.name)}
+                        disabled={isLastOpenValve && valve.status === 'open'}
                       />
                     );
                   })
@@ -128,7 +159,7 @@ export default function FarmDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle className='font-headline'>Motor Control</CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent className="space-y-4">
                 {farm.motors.length > 0 ? (
                   farm.motors.map(motor => (
@@ -136,6 +167,7 @@ export default function FarmDetailPage() {
                       key={motor.id}
                       motor={motor}
                       onToggle={() => toggleMotorStatus(farm.id, motor.id)}
+                      onSetTimer={() => openTimerDialog(motor.id, 'motor', motor.name)}
                     />
                   ))
                 ) : (

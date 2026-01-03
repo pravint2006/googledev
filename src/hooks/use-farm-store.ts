@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { type Farm, type Motor } from '@/lib/data';
+import { useEffect, useState, useRef } from 'react';
+import { type Farm, type Motor, type GateValve } from '@/lib/data';
 import { useToast } from './use-toast';
 import {
   useUser,
@@ -21,11 +21,16 @@ import {
 } from 'firebase/firestore';
 import { type WithId } from '@/firebase/firestore/use-collection';
 
+type DeviceType = 'valve' | 'motor';
+
 export function useFarmStore() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Use a ref to store active timers to prevent re-renders from clearing them
+  const activeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const farmsCollection = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -40,8 +45,6 @@ export function useFarmStore() {
 
   useEffect(() => {
     if (farmsError) {
-      // The useCollection hook now throws a contextual error, so this toast is redundant.
-      // We can leave it as a fallback for non-permission related read errors.
       if (!(farmsError instanceof FirestorePermissionError)) {
           toast({
             variant: 'destructive',
@@ -52,6 +55,52 @@ export function useFarmStore() {
       }
     }
   }, [farmsError, toast]);
+
+  useEffect(() => {
+    // This effect manages the countdown timers on the client side.
+    const interval = setInterval(() => {
+      if (!farms || !user || !firestore) return;
+      farms.forEach(farm => {
+        const updates: Partial<Farm> = {};
+        
+        const updateDevice = (device: GateValve | Motor, type: DeviceType) => {
+          if (device.timer?.isActive) {
+            const now = Date.now();
+            const newRemaining = Math.max(0, Math.floor((device.timer.endTime - now) / 1000));
+            
+            if (newRemaining !== device.timer.remainingSeconds) {
+              const key = type === 'valve' ? 'gateValves' : 'motors';
+              if (!updates[key]) updates[key] = [...(farm as any)[key]];
+              
+              const deviceIndex = (updates[key] as any[]).findIndex(d => d.id === device.id);
+              if(deviceIndex > -1) {
+                (updates[key] as any[])[deviceIndex].timer.remainingSeconds = newRemaining;
+              }
+
+              if (newRemaining === 0) {
+                 (updates[key] as any[])[deviceIndex].timer.isActive = false;
+                 (updates[key] as any[])[deviceIndex].status = type === 'valve' ? 'closed' : 'off';
+              }
+            }
+          }
+          return null;
+        };
+
+        farm.gateValves.forEach(v => updateDevice(v, 'valve'));
+        farm.motors.forEach(m => updateDevice(m, 'motor'));
+
+        if (Object.keys(updates).length > 0) {
+          const farmRef = doc(firestore, 'users', user.uid, 'farms', farm.id);
+          updateDoc(farmRef, updates).catch(serverError => {
+            // No need to show error here, as the UI will just stop updating
+            console.error("Error during timer sync:", serverError);
+          });
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [farms, firestore, user]);
 
   const addFarm = (farmData: Omit<Farm, 'id'>) => {
     if (!user || !firestore) {
@@ -73,12 +122,6 @@ export function useFarmStore() {
     };
     
     return setDoc(newFarmRef, newFarmData)
-      .then(() => {
-        toast({
-            title: "Farm Saved!",
-            description: "Your new farm has been created successfully."
-        });
-      })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newFarmRef.path,
@@ -86,12 +129,6 @@ export function useFarmStore() {
           requestResourceData: newFarmData,
         });
         errorEmitter.emit('permission-error', permissionError);
-        // We can still show a generic toast as a fallback UI
-        toast({
-            variant: "destructive",
-            title: "Error Saving Farm",
-            description: "You don't have permission to save this farm.",
-        });
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -123,11 +160,6 @@ export function useFarmStore() {
           operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-        toast({
-            variant: "destructive",
-            title: "Error Deleting Farm",
-            description: "You don't have permission to delete this farm.",
-        });
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -136,6 +168,57 @@ export function useFarmStore() {
 
   const getFarmById = (id: string): WithId<Farm> | undefined => {
     return farms?.find((farm) => farm.id === id);
+  };
+
+  const setDeviceTimer = (farmId: string, deviceId: string, deviceType: DeviceType, durationMinutes: number) => {
+    if (!user || !firestore) return;
+
+    const farm = farms?.find((f) => f.id === farmId);
+    if (!farm) return;
+    
+    setIsSubmitting(true);
+    
+    const key = deviceType === 'valve' ? 'gateValves' : 'motors';
+    const deviceList = farm[key];
+    const deviceIndex = deviceList.findIndex(d => d.id === deviceId);
+    
+    if (deviceIndex === -1) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    const updatedList = [...deviceList];
+    const device = updatedList[deviceIndex];
+    
+    device.status = deviceType === 'valve' ? 'open' : 'on';
+    device.timer = {
+      isActive: true,
+      durationMinutes,
+      endTime: Date.now() + durationMinutes * 60 * 1000,
+      remainingSeconds: durationMinutes * 60,
+    };
+    
+    const updatedData = { [key]: updatedList };
+
+    const farmRef = doc(firestore, 'users', user.uid, 'farms', farmId);
+    updateDoc(farmRef, updatedData)
+      .then(() => {
+        toast({
+          title: 'Timer Set!',
+          description: `Timer set for ${device.name} for ${durationMinutes} minutes.`,
+        });
+      })
+      .catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: farmRef.path,
+          operation: 'update',
+          requestResourceData: updatedData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   const toggleValveStatus = (farmId: string, valveId: string) => {
@@ -157,6 +240,15 @@ export function useFarmStore() {
       });
       return;
     }
+    
+    if (targetValve.timer?.isActive) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Prevented',
+        description: 'Cannot toggle a device while a timer is active.',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     
@@ -167,6 +259,7 @@ export function useFarmStore() {
         return {
           ...valve,
           status: valve.status === 'open' ? 'closed' : 'open',
+          timer: { ...valve.timer, isActive: false } as any, // Deactivate timer on manual toggle
         };
       }
       return valve;
@@ -176,14 +269,6 @@ export function useFarmStore() {
     const updatedData = { gateValves: updatedValves };
 
     updateDoc(farmRef, updatedData)
-      .then(() => {
-        if (toggledValveName) {
-          toast({
-            title: `Valve status changed`,
-            description: `Valve "${toggledValveName}" status updated.`,
-          });
-        }
-      })
       .catch(serverError => {
          const permissionError = new FirestorePermissionError({
           path: farmRef.path,
@@ -191,11 +276,6 @@ export function useFarmStore() {
           requestResourceData: updatedData
         });
         errorEmitter.emit('permission-error', permissionError);
-        toast({
-            variant: "destructive",
-            title: "Error Updating Valve",
-            description: "You do not have permission to update this valve.",
-        });
       })
       .finally(() => {
           setIsSubmitting(false);
@@ -207,13 +287,28 @@ export function useFarmStore() {
 
     const farm = farms?.find((f) => f.id === farmId);
     if (!farm) return;
+    
+    const targetMotor = farm.motors.find(m => m.id === motorId);
+    if (!targetMotor) return;
+
+    if (targetMotor.timer?.isActive) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Prevented',
+        description: 'Cannot toggle a device while a timer is active.',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
-    let toggledMotorName = '';
+    
     const updatedMotors = farm.motors.map((motor) => {
       if (motor.id === motorId) {
-        toggledMotorName = motor.name;
-        return { ...motor, status: motor.status === 'on' ? 'off' : 'on' };
+        return { 
+            ...motor, 
+            status: motor.status === 'on' ? 'off' : 'on',
+            timer: { ...motor.timer, isActive: false } as any, // Deactivate timer on manual toggle
+        };
       }
       return motor;
     });
@@ -222,14 +317,6 @@ export function useFarmStore() {
     const updatedData = { motors: updatedMotors };
     
     updateDoc(farmRef, updatedData)
-      .then(() => {
-        if (toggledMotorName) {
-          toast({
-            title: 'Motor status changed',
-            description: `Motor "${toggledMotorName}" has been turned ${updatedMotors.find(m => m.id === motorId)?.status}.`,
-          });
-        }
-      })
       .catch(serverError => {
         const permissionError = new FirestorePermissionError({
           path: farmRef.path,
@@ -237,11 +324,6 @@ export function useFarmStore() {
           requestResourceData: updatedData,
         });
         errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Error Updating Motor',
-          description: "You do not have permission to update this motor.",
-        });
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -259,5 +341,6 @@ export function useFarmStore() {
     getFarmById,
     toggleValveStatus,
     toggleMotorStatus,
+    setDeviceTimer,
   };
 }
