@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [isLoginView, setIsLoginView] = useState(true);
   
   // We still use useUser here to show a loading spinner while redirecting.
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -72,10 +72,9 @@ export default function LoginPage() {
     processRedirect();
   }, [auth, firestore, toast]);
 
-  // The loading screen is shown if Firebase is checking the user state OR if we are processing
-  // a potential sign-in redirect. It also shows if the user is logged in, as the FirebaseProvider
-  // will be handling the redirect away from this page shortly.
-  if (isUserLoading || isProcessingRedirect || user) {
+  // The loading screen is shown if we are processing a potential sign-in redirect
+  // or if the user is already logged in (as the FirebaseProvider will be handling the redirect).
+  if (isProcessingRedirect || user) {
     return (
        <div className="flex min-h-screen items-center justify-center p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
