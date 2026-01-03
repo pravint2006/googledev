@@ -37,11 +37,16 @@ Based on this data, generate 3-4 diverse and practical recommendations for a typ
 
 For each recommendation, provide a title, a concise description, a category, and a suitable icon. Ensure the advice is relevant to the weather conditions. For example, if there is a high chance of rain, recommend reducing irrigation. If temperatures are very high, suggest measures to prevent heat stress on crops.
 
-Return ONLY valid JSON that strictly matches RecommendationResponseSchema. Do NOT include explanations, markdown, or any extra text outside of the JSON structure.
+CRITICAL INSTRUCTIONS:
+- Return ONLY raw JSON.
+- Do NOT include markdown formatting (e.g., \`\`\`json).
+- Do NOT include any explanations or text outside of the JSON structure.
+- The JSON output must EXACTLY and STRICTLY match the following RecommendationResponseSchema.
 `,
   config: {
     // Add the helper function to the prompt configuration
     helpers: { add: addHelper },
+    temperature: 0.2, // Lower temperature for more deterministic, schema-compliant output
   }
 });
 
@@ -55,17 +60,24 @@ const getRecommendationsFlow = ai.defineFlow(
     try {
       const { output } = await recommendationPrompt(request);
       if (!output) {
+        // This case might happen if the model returns a completely empty response.
+        console.error("AI returned a null or undefined output.");
         throw new Error('AI returned no output.');
       }
-      // The definePrompt will handle Zod validation. If it fails, it will throw.
+      // The definePrompt's output schema handles Zod validation. If it fails, it will throw an error
+      // which will be caught by the catch block below.
       return output;
     } catch (e: any) {
-        console.error("Error during AI recommendation generation:", e);
-        // Log the raw output if available on the error object
+        // This block catches errors from the prompt call, including Zod validation errors.
+        console.error("Error during AI recommendation generation:", e.message);
+        
+        // Log the raw output if it's available on the error object.
+        // Genkit's Zod validation error often includes the problematic output.
         if (e.output) {
-            console.error("Gemini raw output:", e.output);
+            console.error("AI raw output:", e.output);
         }
-        // Re-throw a more informative error
+        
+        // Re-throw a more user-friendly error to be handled by the client.
         throw new Error('Failed to generate valid recommendations from AI.');
     }
   }
