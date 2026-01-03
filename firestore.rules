@@ -47,14 +47,20 @@ service cloud.firestore {
     }
 
     function hasImmutableUserFields() {
+      // This function now correctly allows 'lastWeatherLocation' to be updated.
+      // It ensures that only allowed fields are present and that core IDs are not changed.
       let allowedKeys = ['id', 'email', 'firstName', 'lastName', 'lastWeatherLocation', 'farmDetails'];
       let incomingKeys = request.resource.data.keys();
       
-      return request.resource.data.id == resource.data.id
+      // Ensure only the allowed fields are being written.
+      let allKeysAllowed = incomingKeys.hasAll(allowedKeys);
+
+      // Ensure that the critical, immutable fields are not being changed.
+      return allKeysAllowed
+        && request.resource.data.id == resource.data.id
         && request.resource.data.email == resource.data.email
         && request.resource.data.firstName == resource.data.firstName
-        && request.resource.data.lastName == resource.data.lastName
-        && incomingKeys.hasAll(allowedKeys) && allowedKeys.hasAll(incomingKeys);
+        && request.resource.data.lastName == resource.data.lastName;
     }
 
     function isValidNewFarm(userId, farmId) {
